@@ -1,0 +1,21 @@
+{
+  "model": "LogisticRegression",
+  "dataset": "Telco Customer Churn",
+  "trained_at": "2026-11-02T17:52:51+00:00",
+  "train_rows": 5634,
+  "test_rows": 1409,
+  "metrics": {
+    "accuracy": 0.8055,
+    "precision": 0.6572,
+    "recall": 0.5588,
+    "f1": 0.604,
+    "roc_auc": 0.8421,
+    "decision_threshold": 0.5,
+    "confusion_matrix": {
+      "true_negative": 926,
+      "false_positive": 109,
+      "false_negative": 165,
+      "true_positive": 209
+    }
+  }
+}

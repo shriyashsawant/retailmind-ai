@@ -1,0 +1,72 @@
+{
+  "rows": 7043,
+  "columns": 21,
+  "schema": {
+    "customerID": "str",
+    "gender": "str",
+    "SeniorCitizen": "int64",
+    "Partner": "str",
+    "Dependents": "str",
+    "tenure": "int64",
+    "PhoneService": "str",
+    "MultipleLines": "str",
+    "InternetService": "str",
+    "OnlineSecurity": "str",
+    "OnlineBackup": "str",
+    "DeviceProtection": "str",
+    "TechSupport": "str",
+    "StreamingTV": "str",
+    "StreamingMovies": "str",
+    "Contract": "str",
+    "PaperlessBilling": "str",
+    "PaymentMethod": "str",
+    "MonthlyCharges": "float64",
+    "TotalCharges": "str",
+    "Churn": "str"
+  },
+  "missing_values": {
+    "TotalCharges": 11
+  },
+  "target_balance": {
+    "No": {
+      "count": 5174,
+      "share": 0.7346
+    },
+    "Yes": {
+      "count": 1869,
+      "share": 0.2654
+    }
+  },
+  "numeric_summary": {
+    "SeniorCitizen": {
+      "count": 7043.0,
+      "mean": 0.1621,
+      "std": 0.3686,
+      "min": 0.0,
+      "25%": 0.0,
+      "50%": 0.0,
+      "75%": 0.0,
+      "max": 1.0
+    },
+    "tenure": {
+      "count": 7043.0,
+      "mean": 32.3711,
+      "std": 24.5595,
+      "min": 0.0,
+      "25%": 9.0,
+      "50%": 29.0,
+      "75%": 55.0,
+      "max": 72.0
+    },
+    "MonthlyCharges": {
+      "count": 7043.0,
+      "mean": 64.7617,
+      "std": 30.09,
+      "min": 18.25,
+      "25%": 35.5,
+      "50%": 70.35,
+      "75%": 89.85,
+      "max": 118.75
+    }
+  }
+}
