@@ -1,74 +1,63 @@
 import json
+import os
 
 import pandas as pd
+from sklearn.model_selection import train_test_split
 
-from .config import ID_COLUMN, RAW_DATA_PATH, REPORTS_DIR, TARGET_COLUMN
-
-
-def load_raw(path=RAW_DATA_PATH):
-    """Load the Telco Customer Churn dataset."""
-    return pd.read_csv(path)
+from src.config import (DATA_FILE, ID_COLUMN, RANDOM_STATE, REPORT_FOLDER,
+                        TARGET_COLUMN, TEST_SIZE)
 
 
-def clean(df):
-    """Normalise dtypes and the target without leaking test information."""
-    df = df.copy()
+def load_data():
+    """Read the customer table from the CSV file."""
+    return pd.read_csv(DATA_FILE)
 
-    df["TotalCharges"] = pd.to_numeric(
-        df["TotalCharges"].astype(str).str.strip(), errors="coerce"
-    )
-    df["TotalCharges"] = df["TotalCharges"].fillna(0.0)
 
-    if TARGET_COLUMN in df.columns:
-        df[TARGET_COLUMN] = df[TARGET_COLUMN].map({"Yes": 1, "No": 0})
-        df = df.dropna(subset=[TARGET_COLUMN])
-        df[TARGET_COLUMN] = df[TARGET_COLUMN].astype("int64")
+def clean_data(df):
+    """Fix the two columns that are not ready to use."""
+    df = df.copy()  # work on a copy so the original table is not changed
+
+    # TotalCharges is stored as text, and 11 brand-new customers have a blank.
+    # Turn it into a number; a blank becomes 0 (they have not been billed yet).
+    df["TotalCharges"] = pd.to_numeric(df["TotalCharges"], errors="coerce")
+    df["TotalCharges"] = df["TotalCharges"].fillna(0)
+
+    # Churn is "Yes" / "No". Models need numbers, so Yes -> 1 and No -> 0.
+    df[TARGET_COLUMN] = df[TARGET_COLUMN].map({"Yes": 1, "No": 0})
 
     return df
 
 
-def split_features_target(df):
-    """Return (X, y), dropping the customer identifier from the features."""
-    X = df.drop(columns=[c for c in (ID_COLUMN, TARGET_COLUMN) if c in df.columns])
-    y = df[TARGET_COLUMN] if TARGET_COLUMN in df.columns else None
-    return X, y
+def get_train_test_data():
+    """Load, clean and split the data. Every script uses this, so all models
+    are trained and tested on exactly the same customers."""
+    df = clean_data(load_data())
+
+    y = df[TARGET_COLUMN]                                   # the answer we want to predict
+    X = df.drop(columns=[ID_COLUMN, TARGET_COLUMN])         # everything else is a clue
+
+    # stratify=y keeps the same share of churners in the train and test parts
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=TEST_SIZE, random_state=RANDOM_STATE, stratify=y)
+    return X_train, X_test, y_train, y_test
 
 
-def profile(df):
-    """Build a small, JSON-serialisable profile of a dataframe."""
-    target_counts = {}
-    if TARGET_COLUMN in df.columns:
-        counts = df[TARGET_COLUMN].value_counts().sort_index()
-        total = int(counts.sum())
-        target_counts = {
-            str(label): {
-                "count": int(count),
-                "share": round(float(count) / total, 4),
-            }
-            for label, count in counts.items()
-        }
+def save_data_profile():
+    """Write a few simple facts about the raw data to reports/data_profile.json."""
+    raw = load_data()
+    blank_total_charges = int(raw["TotalCharges"].astype(str).str.strip().eq("").sum())
+    churn_count = int((raw[TARGET_COLUMN] == "Yes").sum())
 
-    missing = df.isna().sum()
-    for column in df.columns:
-        if not pd.api.types.is_numeric_dtype(df[column]):
-            blanks = df[column].astype(str).str.strip().eq("").sum()
-            missing[column] += int(blanks)
-    return {
-        "rows": int(df.shape[0]),
-        "columns": int(df.shape[1]),
-        "schema": {name: str(dtype) for name, dtype in df.dtypes.items()},
-        "missing_values": {name: int(count) for name, count in missing.items() if count},
-        "target_balance": target_counts,
-        "numeric_summary": {
-            column: {stat: round(float(value), 4) for stat, value in stats.items()}
-            for column, stats in df.select_dtypes("number").describe().to_dict().items()
-        },
+    profile = {
+        "rows": len(raw),
+        "columns": raw.shape[1],
+        "churned_customers": churn_count,
+        "churn_rate": round(churn_count / len(raw), 4),
+        "blank_total_charges": blank_total_charges,
     }
 
-
-def save_profile(df, path=None):
-    path = path or REPORTS_DIR / "data_profile.json"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w", encoding="utf-8") as handle:
-        json.dump(profile(df), handle, indent=2)
-    return path
+    os.makedirs(REPORT_FOLDER, exist_ok=True)
+    file_path = os.path.join(REPORT_FOLDER, "data_profile.json")
+    with open(file_path, "w") as f:
+        json.dump(profile, f, indent=2)
+    return profile

@@ -52,12 +52,13 @@ retailmind-ai/
 │   └── raw/
 │       └── Telco-Customer-Churn.csv
 ├── src/
-│   ├── config.py        # paths, constants, seed
-│   ├── data.py          # load, clean, profile
-│   ├── pipeline.py      # preprocessing + baseline estimator
-│   ├── evaluate.py      # metrics and confusion matrix
-│   ├── train.py         # end-to-end training entry point
-│   └── service.py       # predict() helper + CLI
+│   ├── config.py        # file names, column names, settings
+│   ├── data.py          # load, clean, split the data
+│   ├── pipeline.py      # data preparation + model, joined together
+│   ├── evaluate.py      # scores (recall, precision, F1 ...)
+│   ├── train.py         # Day 1: train the logistic regression baseline
+│   ├── train_day2.py    # Day 2: compare Decision Tree, Random Forest, SVM
+│   └── service.py       # predict() helper + command line
 ├── models/              # persisted pipeline + metrics (generated)
 ├── notebooks/
 │   └── 01_eda_and_baseline.ipynb
@@ -75,21 +76,28 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 
-# Train, evaluate and persist the baseline
+# Day 1: train, test and save the baseline model
 python -m src.train
 
-# Score the built-in demo customers
+# Day 2: train Decision Tree, Random Forest and SVM, compare, save the champion
+python -m src.train_day2
+
+# Score the built-in demo customers (uses the Day 2 champion)
 python -m src.service
 
 # Or score a CSV of customers
-python -m src.service --input path/to/customers.csv
+python -m src.service path/to/customers.csv
 ```
+
+Run every command from the main project folder (the one that contains `src`).
 
 Outputs:
 
-- `models/churn_pipeline.joblib` — the fitted end-to-end pipeline
-- `models/metrics.json` — baseline metrics for later comparison
-- `reports/data_profile.json` — schema, missing values and target balance
+- `models/churn_pipeline.joblib` — the Day 1 model (logistic regression)
+- `models/metrics.json` — Day 1 scores for later comparison
+- `models/champion_pipeline.joblib` — the Day 2 champion (best of the three new models)
+- `models/day2_comparison.json` — every model's scores and why the champion won
+- `reports/data_profile.json` — a few simple facts about the raw data
 
 ---
 
@@ -104,7 +112,7 @@ CSV
              └─ OneHotEncoder         → all categorical columns (handle_unknown="ignore")
                  └─ LogisticRegression(max_iter=2000)
                      └─ evaluate: accuracy, precision, recall, F1, ROC-AUC
-                         └─ joblib.dump(pipeline + metadata)
+                         └─ joblib.dump(pipeline)
 ```
 
 Everything up to the classifier lives inside one `Pipeline`, so serving cannot drift from training: the exact same encoders and scaler are applied to every prediction.
@@ -136,6 +144,23 @@ Reading it: the model catches about **56% of churners** (recall) and is right ab
 
 ---
 
+## Day 2 — Decision Tree vs Random Forest vs SVM
+
+Goal: catch more of the customers who are about to leave. All three new models use the **same Day 1 data preparation** (`make_pipeline`), the **same train/test customers** and the **same random seed (42)**, so the comparison is fair. Each one uses `class_weight="balanced"`, which tells the model that a churner matters more than a stayer (only about 1 in 4 customers churns).
+
+Hold-out set: **1,409 customers** (374 churned). Decision threshold: **0.50**. The champion is the model with the highest recall on the churn class.
+
+| Model | Recall (churn) | Precision (churn) | F1 | ROC-AUC | Accuracy |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Logistic Regression (Day 1) | 0.5588 | **0.6572** | 0.6040 | **0.8421** | **0.8055** |
+| Decision Tree (max depth 5) | 0.7567 | 0.5260 | 0.6206 | 0.8318 | 0.7544 |
+| **Random Forest (200 trees, max depth 8)** | **0.7914** | 0.5258 | **0.6318** | 0.8407 | 0.7551 |
+| SVM (RBF) | 0.6257 | 0.5894 | 0.6070 | 0.8210 | 0.7850 |
+
+**Champion: Random Forest.** It finds **79% of churners** (Day 1 found 56%), so the retention team reaches far more at-risk customers, and its F1 is the best of all four. The price is lower precision (0.53 vs 0.66): about half of the customers it flags will not actually leave, which is acceptable when a retention offer is cheap compared with losing a customer. Its ROC-AUC (0.8407) is about the same as Day 1 (0.8421), which tells us the gain comes from catching more churners, not from a better ranking of customers. The champion is saved to `models/champion_pipeline.joblib` next to the Day 1 model, and `predict()` now uses it by default.
+
+---
+
 ## Using the service
 
 ```python
@@ -155,12 +180,13 @@ predict(customer)
 # [{'churn_probability': 0.6137, 'churn_prediction': 'Yes', 'risk_tier': 'medium'}]
 ```
 
-`predict()` accepts a single dict, a list of dicts, or a DataFrame, and returns one result per customer. Risk tiers are a presentation convenience: `high` ≥ 0.70, `medium` ≥ 0.40, otherwise `low`.
+`predict()` accepts a single dict, a list of dicts, or a DataFrame, and returns one result per customer. It uses the Day 2 champion if it exists, otherwise the Day 1 model. Risk tiers are a presentation convenience: `high` ≥ 0.70, `medium` ≥ 0.40, otherwise `low`.
 
 ---
 
 ## Design notes
 
+- **Simple code.** Short functions, plain loops and comments that explain *why*, so a beginner can read every file top to bottom.
 - **Baseline first.** Logistic regression is deliberately simple: fast, interpretable, and a fair reference point for the stronger models coming next.
 - **No leakage.** Cleaning and splitting happen before fitting; all encoding/scaling is learned inside the pipeline on training data only.
 - **Reproducible.** Fixed `random_state=42` and a stratified split preserve the churn rate in both folds.
@@ -172,7 +198,7 @@ predict(customer)
 ## Roadmap
 
 - [x] **Day 1** — End-to-end churn pipeline + persisted ML service + baseline metrics
-- [ ] **Day 2** — Swap the baseline for Decision Tree, Random Forest and SVM; pick a champion
+- [x] **Day 2** — Compare Decision Tree, Random Forest and SVM; Random Forest is the champion
 - [ ] Later — feature engineering, class-imbalance handling, API layer, monitoring, deployment
 
 ---

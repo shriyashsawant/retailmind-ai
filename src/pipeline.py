@@ -1,37 +1,34 @@
 from sklearn.compose import ColumnTransformer
-from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
-from .config import NUMERIC_FEATURES, RANDOM_STATE
+from src.config import NUMBER_COLUMNS
 
 
-def build_preprocessor(feature_columns):
-    """Encode categoricals and scale numerics in one reusable transformer."""
-    numeric = [c for c in feature_columns if c in NUMERIC_FEATURES]
-    categorical = [c for c in feature_columns if c not in numeric]
+def make_preprocessor(X):
+    """Get the data ready for any model.
 
-    return ColumnTransformer(
-        transformers=[
-            ("numeric", StandardScaler(), numeric),
-            (
-                "categorical",
-                OneHotEncoder(handle_unknown="ignore", sparse_output=True),
-                categorical,
-            ),
-        ],
-        remainder="drop",
-    )
+    - number columns are scaled so big numbers do not drown out small ones
+    - text columns (like "Contract") are turned into 0/1 columns (one-hot)
+    """
+    text_columns = []
+    for column in X.columns:
+        if column not in NUMBER_COLUMNS:
+            text_columns.append(column)
+
+    return ColumnTransformer([
+        ("numbers", StandardScaler(), NUMBER_COLUMNS),
+        ("text", OneHotEncoder(handle_unknown="ignore"), text_columns),
+    ])
 
 
-def build_pipeline(feature_columns):
-    """Day 1 baseline: preprocessing + logistic regression, end to end."""
-    return Pipeline(
-        steps=[
-            ("preprocessor", build_preprocessor(feature_columns)),
-            (
-                "classifier",
-                LogisticRegression(max_iter=2000, random_state=RANDOM_STATE),
-            ),
-        ]
-    )
+def make_pipeline(X, model):
+    """Join the preparation step and a model into one object.
+
+    Every model (Day 1 and Day 2) goes through this same function, so they all
+    learn from exactly the same prepared features. That makes the comparison fair.
+    """
+    return Pipeline([
+        ("prepare", make_preprocessor(X)),
+        ("model", model),
+    ])
