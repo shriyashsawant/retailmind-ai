@@ -1,125 +1,110 @@
-import argparse
+"""Predict churn for new customers.
+
+From the main project folder:
+    python -m src.service                      # try two example customers
+    python -m src.service my_customers.csv     # score customers from a CSV file
+"""
 import json
+import os
+import sys
 
 import joblib
 import pandas as pd
 
-from .config import DECISION_THRESHOLD, MODEL_PATH
+from src.config import CHAMPION_MODEL_FILE, DAY1_MODEL_FILE, THRESHOLD
 
-
-def load_model(path=MODEL_PATH):
-    return joblib.load(path)
-
-
-def _to_frame(records):
-    if isinstance(records, dict):
-        return pd.DataFrame([records])
-    if isinstance(records, pd.DataFrame):
-        return records.copy()
-    return pd.DataFrame(records)
-
-
-def predict(records, threshold=DECISION_THRESHOLD, model_path=MODEL_PATH):
-    """Score one customer (dict) or many (list[dict] / DataFrame).
-
-    Returns a list of dicts with the churn probability and a yes/no prediction.
-    """
-    artifact = load_model(model_path)
-    pipeline = artifact["pipeline"]
-    feature_columns = artifact["feature_columns"]
-
-    frame = _to_frame(records)
-
-    missing = [column for column in feature_columns if column not in frame.columns]
-    if missing:
-        raise ValueError(f"Missing required fields: {missing}")
-
-    frame = frame[feature_columns].copy()
-    frame["TotalCharges"] = pd.to_numeric(
-        frame["TotalCharges"], errors="coerce"
-    ).fillna(0.0)
-    probabilities = pipeline.predict_proba(frame)[:, 1]
-
-    results = []
-    for probability in probabilities:
-        probability = float(probability)
-        if probability >= 0.7:
-            risk_tier = "high"
-        elif probability >= 0.4:
-            risk_tier = "medium"
-        else:
-            risk_tier = "low"
-        results.append(
-            {
-                "churn_probability": round(probability, 4),
-                "churn_prediction": "Yes" if probability >= threshold else "No",
-                "risk_tier": risk_tier,
-            }
-        )
-    return results
-
-
+# Two made-up customers so you can try the service straight away.
 SAMPLE_CUSTOMERS = [
     {
-        "gender": "Female",
-        "SeniorCitizen": 0,
-        "Partner": "Yes",
-        "Dependents": "No",
-        "tenure": 1,
-        "PhoneService": "No",
-        "MultipleLines": "No phone service",
-        "InternetService": "DSL",
-        "OnlineSecurity": "No",
-        "OnlineBackup": "Yes",
-        "DeviceProtection": "No",
-        "TechSupport": "No",
-        "StreamingTV": "No",
-        "StreamingMovies": "No",
-        "Contract": "Month-to-month",
-        "PaperlessBilling": "Yes",
-        "PaymentMethod": "Electronic check",
-        "MonthlyCharges": 29.85,
-        "TotalCharges": 29.85,
+        "gender": "Female", "SeniorCitizen": 0, "Partner": "Yes", "Dependents": "No",
+        "tenure": 1, "PhoneService": "No", "MultipleLines": "No phone service",
+        "InternetService": "DSL", "OnlineSecurity": "No", "OnlineBackup": "Yes",
+        "DeviceProtection": "No", "TechSupport": "No", "StreamingTV": "No",
+        "StreamingMovies": "No", "Contract": "Month-to-month", "PaperlessBilling": "Yes",
+        "PaymentMethod": "Electronic check", "MonthlyCharges": 29.85, "TotalCharges": 29.85,
     },
     {
-        "gender": "Male",
-        "SeniorCitizen": 1,
-        "Partner": "No",
-        "Dependents": "No",
-        "tenure": 68,
-        "PhoneService": "Yes",
-        "MultipleLines": "Yes",
-        "InternetService": "Fiber optic",
-        "OnlineSecurity": "Yes",
-        "OnlineBackup": "Yes",
-        "DeviceProtection": "Yes",
-        "TechSupport": "Yes",
-        "StreamingTV": "Yes",
-        "StreamingMovies": "Yes",
-        "Contract": "Two year",
-        "PaperlessBilling": "No",
-        "PaymentMethod": "Credit card (automatic)",
-        "MonthlyCharges": 105.5,
-        "TotalCharges": 7174.0,
+        "gender": "Male", "SeniorCitizen": 1, "Partner": "No", "Dependents": "No",
+        "tenure": 68, "PhoneService": "Yes", "MultipleLines": "Yes",
+        "InternetService": "Fiber optic", "OnlineSecurity": "Yes", "OnlineBackup": "Yes",
+        "DeviceProtection": "Yes", "TechSupport": "Yes", "StreamingTV": "Yes",
+        "StreamingMovies": "Yes", "Contract": "Two year", "PaperlessBilling": "No",
+        "PaymentMethod": "Credit card (automatic)", "MonthlyCharges": 105.5, "TotalCharges": 7174.0,
     },
 ]
 
 
-def main():
-    parser = argparse.ArgumentParser(description="RetailMind churn prediction service")
-    parser.add_argument(
-        "--input",
-        help="Path to a CSV file of customers. Defaults to built-in demo customers.",
-    )
-    args = parser.parse_args()
+def load_model(model_file=None):
+    """Load a saved model. By default use the Day 2 champion, or the Day 1 model if
+    the champion has not been trained yet."""
+    if model_file is None:
+        if os.path.exists(CHAMPION_MODEL_FILE):
+            model_file = CHAMPION_MODEL_FILE
+        else:
+            model_file = DAY1_MODEL_FILE
+    return joblib.load(model_file)
 
-    if args.input:
-        records = pd.read_csv(args.input)
+
+def risk_label(probability):
+    """Turn a churn probability into an easy word."""
+    if probability >= 0.7:
+        return "high"
+    elif probability >= 0.4:
+        return "medium"
     else:
-        records = SAMPLE_CUSTOMERS
+        return "low"
 
-    for index, result in enumerate(predict(records), start=1):
-        print(json.dumps({"customer": index, **result}))
+
+def predict(customers, model_file=None):
+    """Score one customer (a dict), a list of dicts, or a table (DataFrame).
+
+    Returns one result per customer.
+    """
+    pipeline = load_model(model_file)
+
+    # Put whatever we were given into a table with one row per customer.
+    if isinstance(customers, dict):
+        table = pd.DataFrame([customers])
+    else:
+        table = pd.DataFrame(customers)
+
+    # The model remembers which columns it was trained on.
+    needed_columns = list(pipeline.feature_names_in_)
+    missing = [c for c in needed_columns if c not in table.columns]
+    if missing:
+        raise ValueError("These columns are missing: " + ", ".join(missing))
+    table = table[needed_columns].copy()
+
+    # Same fix as in training: TotalCharges must be a number, blank becomes 0.
+    table["TotalCharges"] = pd.to_numeric(table["TotalCharges"], errors="coerce").fillna(0)
+
+    probabilities = pipeline.predict_proba(table)[:, 1]
+
+    results = []
+    for probability in probabilities:
+        probability = float(probability)
+        if probability >= THRESHOLD:
+            answer = "Yes"
+        else:
+            answer = "No"
+        results.append({
+            "churn_probability": round(probability, 4),
+            "churn_prediction": answer,
+            "risk_tier": risk_label(probability),
+        })
+    return results
+
+
+def main():
+    if len(sys.argv) > 1:
+        customers = pd.read_csv(sys.argv[1])   # the CSV path given on the command line
+    else:
+        customers = SAMPLE_CUSTOMERS
+
+    number = 1
+    for result in predict(customers):
+        print(json.dumps({"customer": number, **result}))
+        number = number + 1
 
 
 if __name__ == "__main__":
