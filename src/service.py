@@ -11,8 +11,8 @@ import sys
 import joblib
 import pandas as pd
 
-from src.config import (CHAMPION_MODEL_FILE, DAY1_MODEL_FILE, DAY3_MODEL_FILE,
-                        DAY4_MODEL_FILE, THRESHOLD)
+from src.config import (BEST_MODEL_FILE, CHAMPION_MODEL_FILE, DAY1_MODEL_FILE,
+                        DAY3_MODEL_FILE, DAY4_MODEL_FILE, THRESHOLD)
 from src.features import add_features
 
 # Two made-up customers so you can try the service straight away.
@@ -37,10 +37,10 @@ SAMPLE_CUSTOMERS = [
 
 
 def load_model(model_file=None):
-    """Load a saved model. By default use the newest one that exists:
-    Day 4 final model, then Day 3, then Day 2, then the Day 1 baseline."""
+    """Load a saved model. By default use the best one that exists:
+    the winner of the full comparison, then Day 4, then Day 3, then Day 2, then the Day 1 baseline."""
     if model_file is None:
-        for candidate in [DAY4_MODEL_FILE, DAY3_MODEL_FILE, CHAMPION_MODEL_FILE, DAY1_MODEL_FILE]:
+        for candidate in [BEST_MODEL_FILE, DAY4_MODEL_FILE, DAY3_MODEL_FILE, CHAMPION_MODEL_FILE, DAY1_MODEL_FILE]:
             if os.path.exists(candidate):
                 model_file = candidate
                 break

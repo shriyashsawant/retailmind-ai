@@ -124,12 +124,20 @@ After one-hot encoding we have 54 columns, many saying similar things. PCA combi
 - **Bagging** (Random Forest): many trees trained **separately** on random pieces of the data, then they vote. This reduces overfitting.
 - **Boosting** (Gradient Boosting, like XGBoost): trees are added **one after another**, and each new tree focuses on the mistakes of the previous ones.
 
-We compared seven ensembles: Random Forest, Extra Trees and Bagging (the bagging family), and AdaBoost, Gradient Boosting, Hist Gradient Boosting and XGBoost (the boosting family).
+**A fairness problem, and how we fixed it.** The steps above tested different models in different ways (some tuned, some not; some with the new features, some without). That is not a fair race. So `train_all.py` runs **every model (12 of them) in every setup (3 of them), each one tuned**, and also scores each one with its default settings. The three setups are: original columns, original + new features, and new features + PCA.
+
+What that fair race showed:
+- **Tuning helped a lot** (31 of 36 cases). Default Decision Trees and Extra Trees overfit badly until they are tuned (+0.13 and +0.11 F1). Logistic Regression barely changed, because it has few settings that matter.
+- **The new features did NOT help**: only 3 of 12 models improved, and on average the score dropped a tiny bit (-0.0016). The models already found the same clues in the original columns. This is a real lesson: a clever idea is only good if the measurement says so.
+- **PCA almost never helped** (1 of 12; it helped Naive Bayes because it removes the overlap Naive Bayes cannot handle).
+- **Winner: Bagging on the original columns** (validation F1 0.6387). But Random Forest (0.6370) and Hist Gradient Boosting (0.6356) are within 0.003, so honestly the top three are a tie.
+
+The seven ensembles in the first (uneven) test were: Random Forest, Extra Trees and Bagging (the bagging family), and AdaBoost, Gradient Boosting, Hist Gradient Boosting and XGBoost (the boosting family). Here is what that first test showed: Random Forest, Extra Trees and Bagging (the bagging family), and AdaBoost, Gradient Boosting, Hist Gradient Boosting and XGBoost (the boosting family).
 
 **Result:** Random Forest was the final model (best validation F1 0.6349, test recall 0.797). But look at the table in the README: Random Forest, Bagging, Hist Gradient Boosting and XGBoost are **practically tied** (their F1 scores are within about 0.01). With only 1,409 test customers, a difference that small is noise, not proof. Gradient Boosting (the plain version has no `class_weight` setting) caught only 53% of leavers at the 0.5 cut-off even though its ranking (ROC-AUC) was among the best. A later day can fix that by moving the cut-off.
 
 ### Locking the model
-`churn_final.joblib` stores the preparation **and** the model together. When the service scores a new customer, `add_features` builds the new columns, then the saved preparation and model do the rest, exactly as in training.
+`churn_best_overall.joblib` (the winner of the fair comparison) stores the preparation **and** the model together, so a new customer is prepared exactly like the training customers. The service also calls `add_features`, which builds the new columns for any saved model that needs them; the winner happens not to use them.
 
 ---
 
@@ -166,7 +174,7 @@ First, two families of problem:
 | 1 | Logistic Regression | 0.559 | 0.657 | 0.604 |
 | 2 | Random Forest | 0.791 | 0.526 | 0.632 |
 | 3 | Random Forest, tuned | 0.797 | 0.517 | 0.627 |
-| 4 | Random Forest + new features | 0.797 | 0.527 | 0.634 |
+| 4 | Bagging, tuned (winner of the fair comparison) | 0.773 | 0.546 | 0.640 |
 
 Notice: the **big** gain came from understanding the problem (use `balanced` so we catch leavers). The later days gave small steady gains. In real projects that is normal.
 

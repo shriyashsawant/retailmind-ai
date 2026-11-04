@@ -60,6 +60,7 @@ retailmind-ai/
 │   ├── train_day2.py    # Day 2: compare Decision Tree, Random Forest, SVM
 │   ├── train_day3.py    # Day 3: tune the models, check underfit / overfit
 │   ├── features.py      # Day 4: the 6 new columns
+│   ├── train_all.py     # the full fair comparison (12 models x 3 setups, all tuned)
 │   ├── regression_demo.py  # predict a number (monthly bill) with Linear Regression
 │   ├── train_day4.py    # Day 4: features, PCA, bagging + boosting, final model
 │   └── service.py       # predict() helper + command line
@@ -93,6 +94,9 @@ python -m src.train_day3
 
 # Day 4: new features, PCA, bagging + boosting, lock the final model
 python -m src.train_day4
+
+# Full fair comparison: every model x every setup, each one tuned (about 15-30 minutes)
+python -m src.train_all
 
 # Bonus: predict a NUMBER (the monthly bill) with Linear Regression
 python -m src.regression_demo
@@ -224,7 +228,7 @@ Seven ensembles, all using the new features, compared with the Day 3 champion. T
 | Model | Family | Valid F1 | Recall | Precision | F1 | ROC-AUC |
 | --- | --- | ---: | ---: | ---: | ---: | ---: |
 | Day 3 champion (old columns) | — | — | 0.7968 | 0.5165 | 0.6267 | 0.8440 |
-| **Random Forest — final model** | bagging | **0.6349** | **0.7968** | 0.5265 | 0.6340 | 0.8442 |
+| **Random Forest (Day 4 step-by-step pick)** | bagging | **0.6349** | **0.7968** | 0.5265 | 0.6340 | 0.8442 |
 | Extra Trees | bagging | 0.6293 | 0.7914 | 0.5193 | 0.6271 | 0.8404 |
 | Bagging (plain trees) | bagging | 0.6346 | 0.7727 | 0.5402 | 0.6359 | 0.8433 |
 | AdaBoost | boosting | 0.6169 | 0.7460 | 0.5439 | 0.6291 | 0.8150 |
@@ -232,15 +236,63 @@ Seven ensembles, all using the new features, compared with the Day 3 champion. T
 | Hist Gradient Boosting | boosting | 0.6285 | 0.7807 | 0.5290 | 0.6307 | 0.8423 |
 | XGBoost | boosting | 0.6303 | 0.7834 | 0.5149 | 0.6214 | 0.8452 |
 
-Random Forest is the final model because it has the best validation F1 (it was chosen without looking at the test customers). The truth is that **Random Forest, Bagging, Hist Gradient Boosting and XGBoost are practically tied**: their F1 scores are within about 0.01 of each other, which is smaller than the normal noise of a 1,409-customer test set. The models without a `class_weight` option (Gradient Boosting) flag fewer churners at the 0.50 cut-off (recall 0.53) even though their ROC-AUC is among the best; moving the cut-off is a later improvement.
+In this step Random Forest had the best validation F1 (chosen without looking at the test customers). This step used untuned settings, so see the full fair comparison below for the final answer. The truth is that **Random Forest, Bagging, Hist Gradient Boosting and XGBoost are practically tied**: their F1 scores are within about 0.01 of each other, which is smaller than the normal noise of a 1,409-customer test set. The models without a `class_weight` option (Gradient Boosting) flag fewer churners at the 0.50 cut-off (recall 0.53) even though their ROC-AUC is among the best; moving the cut-off is a later improvement.
 
 XGBoost needs `pip install xgboost`, and on a Mac also `brew install libomp`. If it is missing, `train_day4.py` skips it and carries on.
+
+### The full, fair comparison (`python -m src.train_all`)
+
+The steps above tested different models in different ways. So `src/train_all.py` runs **every one of 12 models in all 3 setups** (original columns, new features, new features + PCA), and **each one is tuned** with `GridSearchCV` (5-fold cross-validation, F1). It also scores each model with default settings so we can see whether tuning helped. The winner is chosen by validation F1 on the training customers, never by the test customers.
+
+Tuned validation F1 (higher is better; the best setup for each model is marked with *):
+
+| Model | Original columns | New features | New features + PCA |
+| --- | ---: | ---: | ---: |
+| Logistic Regression | 0.6326 * | 0.6298 | 0.6263 |
+| K-Nearest Neighbours | 0.6056 * | 0.6039 | 0.5997 |
+| Naive Bayes | 0.5956 | 0.5965 | 0.6251 * |
+| SVM | 0.6233 | 0.6252 * | 0.6214 |
+| Decision Tree | 0.6211 * | 0.6185 | 0.6151 |
+| Random Forest | 0.6370 * | 0.6369 | 0.6288 |
+| Extra Trees | 0.6256 | 0.6297 * | 0.6247 |
+| **Bagging** | **0.6387 \*** | 0.6372 | 0.6328 |
+| AdaBoost | 0.6217 * | 0.6169 | 0.6163 |
+| Gradient Boosting | 0.5906 * | 0.5820 | 0.5684 |
+| Hist Gradient Boosting | 0.6356 * | 0.6339 | 0.6279 |
+| XGBoost | 0.6322 * | 0.6298 | 0.6254 |
+
+What we learned:
+
+| Question | Answer |
+| --- | --- |
+| Did tuning help? | **Yes**, in 31 of 36 cases (average +0.039 F1). It helped most where the default settings overfit: Decision Tree +0.129, Extra Trees +0.107. It barely mattered for Logistic Regression, SVM and Gradient Boosting (under +0.003). |
+| Did the new features help? | **No, not really.** They helped 3 of 12 models and on average slightly hurt (−0.0016). The honest conclusion is that these 6 features add nothing the models had not already found in the original columns. |
+| Did PCA help? | **Almost never.** It helped only Naive Bayes (+0.029, because PCA removes the overlap that Naive Bayes dislikes) and slightly hurt the other 11. |
+
+**Overall winner: Bagging on the original columns** (validation F1 0.6387, test: recall 0.7727, precision 0.5463, F1 0.6401, ROC-AUC 0.8462), saved as `models/churn_best_overall.joblib` and used by the service. Be careful how you read this: Bagging, Random Forest (0.6370) and Hist Gradient Boosting (0.6356) are separated by about 0.003, which is smaller than the normal noise of this test, so they are effectively tied. XGBoost needs `pip install xgboost` (on a Mac also `brew install libomp`); if it is missing the script skips it.
+
+Test customers, each model in its own best setup:
+
+| Model | Best setup | Recall | Precision | F1 | ROC-AUC |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Logistic Regression | original | 0.7861 | 0.5087 | 0.6176 | 0.8410 |
+| K-Nearest Neighbours | original | 0.6016 | 0.6131 | 0.6073 | 0.8285 |
+| Naive Bayes | new + PCA | 0.7166 | 0.5164 | 0.6002 | 0.8144 |
+| SVM | new features | 0.6444 | 0.5980 | 0.6203 | 0.8270 |
+| Decision Tree | original | 0.7594 | 0.5259 | 0.6214 | 0.8350 |
+| Random Forest | original | 0.7968 | 0.5165 | 0.6267 | 0.8440 |
+| Extra Trees | new features | 0.7460 | 0.5225 | 0.6145 | 0.8370 |
+| **Bagging** | original | 0.7727 | 0.5463 | **0.6401** | **0.8462** |
+| AdaBoost | original | 0.7807 | 0.5114 | 0.6180 | 0.8292 |
+| Gradient Boosting | original | 0.5000 | 0.6655 | 0.5710 | 0.8453 |
+| Hist Gradient Boosting | original | 0.7807 | 0.5242 | 0.6273 | 0.8438 |
+| XGBoost | original | 0.7807 | 0.5233 | 0.6266 | 0.8376 |
 
 ### Regression demo (predicting a number)
 
 Churn is a **classification** problem (yes / no). **Regression** predicts a number. `python -m src.regression_demo` predicts each customer's monthly bill with Linear Regression, Ridge Regression and a Random Forest Regressor (average error about 0.8 on an average bill of 64.76, R² 0.999). It is easy because a customer's bill is almost the sum of the services they chose.
 
-The final model is saved as `models/churn_final.joblib`. The saved file contains the data preparation (scaling and one-hot) **and** the model, and the new columns come from `src/features.py`, so serving prepares data exactly like training.
+Every saved model file contains the data preparation (scaling and one-hot) **and** the model, so serving prepares data exactly like training. (`models/churn_final.joblib` is the Day 4 step-by-step result; `models/churn_best_overall.joblib` is the winner of the full fair comparison above and is what the service uses.)
 
 ### Phase 1 summary — the baseline table
 
@@ -251,9 +303,9 @@ Same 1,409 test customers for every row, threshold 0.50.
 | 1 | Logistic Regression | 0.5588 | 0.6572 | 0.6040 | 0.8421 |
 | 2 | Random Forest | 0.7914 | 0.5258 | 0.6318 | 0.8407 |
 | 3 | Random Forest, tuned | 0.7968 | 0.5165 | 0.6267 | 0.8440 |
-| 4 | Random Forest + new features | 0.7968 | 0.5265 | 0.6340 | 0.8442 |
+| 4 | Bagging, tuned (winner of the full comparison) | 0.7727 | 0.5463 | 0.6401 | 0.8462 |
 
-The big jump was Day 2 (recall 0.56 → 0.79). Days 3 and 4 gave small steady gains. Every later day must beat **F1 0.6340** and **ROC-AUC 0.8442**.
+The big jump was Day 2 (recall 0.56 → 0.79). Days 3 and 4 gave only small gains, and the Day 4 features and PCA did not help on this data. Every later day must beat **F1 0.6401** and **ROC-AUC 0.8462**.
 
 ---
 

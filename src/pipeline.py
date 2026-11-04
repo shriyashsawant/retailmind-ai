@@ -1,5 +1,6 @@
 import pandas as pd
 from sklearn.compose import ColumnTransformer
+from sklearn.decomposition import PCA
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
@@ -27,13 +28,17 @@ def make_preprocessor(X):
     ])
 
 
-def make_pipeline(X, model):
+def make_pipeline(X, model, use_pca=False):
     """Join the preparation step and a model into one object.
 
-    Every model (Day 1 and Day 2) goes through this same function, so they all
-    learn from exactly the same prepared features. That makes the comparison fair.
+    Every model goes through this same function, so they all learn from exactly
+    the same prepared features. That makes the comparison fair.
+
+    use_pca=True squashes the prepared columns into fewer ones (keeping 95% of
+    the information) before the model sees them.
     """
-    return Pipeline([
-        ("prepare", make_preprocessor(X)),
-        ("model", model),
-    ])
+    steps = [("prepare", make_preprocessor(X))]
+    if use_pca:
+        steps.append(("pca", PCA(n_components=0.95)))
+    steps.append(("model", model))
+    return Pipeline(steps)

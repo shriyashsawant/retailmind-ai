@@ -15,6 +15,8 @@ DAY3_MODEL_FILE = "models/churn_v3.joblib"               # Day 3: the tuned cham
 DAY3_RESULTS_FILE = "models/day3_tuning.json"
 DAY4_MODEL_FILE = "models/churn_final.joblib"            # Day 4: the final production model
 DAY4_RESULTS_FILE = "models/day4_results.json"
+BEST_MODEL_FILE = "models/churn_best_overall.joblib"     # the winner of the full fair comparison
+ALL_RESULTS_FILE = "models/all_models_results.json"
 
 # --- column names ---
 TARGET_COLUMN = "Churn"          # what we want to predict (Yes / No)
