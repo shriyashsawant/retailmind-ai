@@ -1,5 +1,5 @@
 {
-  "trained_at": "2026-11-03T21:25:59",
+  "trained_at": "2026-11-04T21:12:16",
   "test_rows": 1409,
   "champion": "Random Forest",
   "why": "Random Forest won because it caught the most churners: recall 0.7914 against 0.5588 for the Day 1 model. The cost is precision (0.5258 vs 0.6572), so more loyal customers are flagged by mistake.",

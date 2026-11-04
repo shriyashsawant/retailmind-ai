@@ -6,6 +6,7 @@ from sklearn.model_selection import train_test_split
 
 from src.config import (DATA_FILE, ID_COLUMN, RANDOM_STATE, REPORT_FOLDER,
                         TARGET_COLUMN, TEST_SIZE)
+from src.features import add_features
 
 
 def load_data():
@@ -28,13 +29,18 @@ def clean_data(df):
     return df
 
 
-def get_train_test_data():
+def get_train_test_data(new_features=False):
     """Load, clean and split the data. Every script uses this, so all models
-    are trained and tested on exactly the same customers."""
+    are trained and tested on exactly the same customers.
+
+    new_features=True adds the Day 4 columns from src/features.py.
+    """
     df = clean_data(load_data())
 
     y = df[TARGET_COLUMN]                                   # the answer we want to predict
     X = df.drop(columns=[ID_COLUMN, TARGET_COLUMN])         # everything else is a clue
+    if new_features:
+        X = add_features(X)
 
     # stratify=y keeps the same share of churners in the train and test parts
     X_train, X_test, y_train, y_test = train_test_split(

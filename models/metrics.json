@@ -1,7 +1,7 @@
 {
   "model": "LogisticRegression",
   "dataset": "Telco Customer Churn",
-  "trained_at": "2026-11-03T21:25:54",
+  "trained_at": "2026-11-04T21:09:04",
   "train_rows": 5634,
   "test_rows": 1409,
   "metrics": {

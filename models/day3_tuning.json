@@ -1,0 +1,173 @@
+{
+  "trained_at": "2026-11-04T21:15:53",
+  "scoring": "f1",
+  "champion": "Random Forest",
+  "models": {
+    "Logistic Regression": {
+      "best_settings": {
+        "C": 0.1
+      },
+      "train_score": 0.6336,
+      "validation_score": 0.6326,
+      "diagnosis": "balanced: small gap and a reasonable score"
+    },
+    "K-Nearest Neighbours": {
+      "best_settings": {
+        "n_neighbors": 31,
+        "weights": "uniform"
+      },
+      "train_score": 0.6254,
+      "validation_score": 0.6056,
+      "diagnosis": "balanced: small gap and a reasonable score"
+    },
+    "Naive Bayes": {
+      "best_settings": {
+        "var_smoothing": 0.001
+      },
+      "train_score": 0.5968,
+      "validation_score": 0.5956,
+      "diagnosis": "balanced: small gap and a reasonable score"
+    },
+    "SVM": {
+      "best_settings": {
+        "C": 0.3
+      },
+      "train_score": 0.638,
+      "validation_score": 0.6233,
+      "diagnosis": "balanced: small gap and a reasonable score"
+    },
+    "Decision Tree": {
+      "best_settings": {
+        "max_depth": 5,
+        "min_samples_leaf": 50
+      },
+      "train_score": 0.6391,
+      "validation_score": 0.6211,
+      "diagnosis": "balanced: small gap and a reasonable score"
+    },
+    "Random Forest": {
+      "best_settings": {
+        "max_depth": 8,
+        "min_samples_leaf": 10,
+        "n_estimators": 100
+      },
+      "train_score": 0.6766,
+      "validation_score": 0.637,
+      "diagnosis": "balanced: small gap and a reasonable score"
+    }
+  },
+  "learning_curve": [
+    {
+      "customers": 901,
+      "train_score": 0.7129,
+      "validation_score": 0.6354
+    },
+    {
+      "customers": 1802,
+      "train_score": 0.6887,
+      "validation_score": 0.6254
+    },
+    {
+      "customers": 2704,
+      "train_score": 0.6903,
+      "validation_score": 0.6284
+    },
+    {
+      "customers": 3605,
+      "train_score": 0.6886,
+      "validation_score": 0.6316
+    },
+    {
+      "customers": 4507,
+      "train_score": 0.6765,
+      "validation_score": 0.636
+    }
+  ],
+  "advice": "The validation score has levelled off, so more data alone will not help; better features might.",
+  "test_scores": {
+    "Logistic Regression": {
+      "accuracy": 0.7417,
+      "precision": 0.5087,
+      "recall": 0.7861,
+      "f1": 0.6176,
+      "roc_auc": 0.841,
+      "decision_threshold": 0.5,
+      "confusion_matrix": {
+        "true_negative": 751,
+        "false_positive": 284,
+        "false_negative": 80,
+        "true_positive": 294
+      }
+    },
+    "K-Nearest Neighbours": {
+      "accuracy": 0.7935,
+      "precision": 0.6131,
+      "recall": 0.6016,
+      "f1": 0.6073,
+      "roc_auc": 0.8285,
+      "decision_threshold": 0.5,
+      "confusion_matrix": {
+        "true_negative": 893,
+        "false_positive": 142,
+        "false_negative": 149,
+        "true_positive": 225
+      }
+    },
+    "Naive Bayes": {
+      "accuracy": 0.6948,
+      "precision": 0.4589,
+      "recall": 0.8369,
+      "f1": 0.5928,
+      "roc_auc": 0.8075,
+      "decision_threshold": 0.5,
+      "confusion_matrix": {
+        "true_negative": 666,
+        "false_positive": 369,
+        "false_negative": 61,
+        "true_positive": 313
+      }
+    },
+    "SVM": {
+      "accuracy": 0.7871,
+      "precision": 0.592,
+      "recall": 0.6364,
+      "f1": 0.6134,
+      "roc_auc": 0.8272,
+      "decision_threshold": 0.5,
+      "confusion_matrix": {
+        "true_negative": 871,
+        "false_positive": 164,
+        "false_negative": 136,
+        "true_positive": 238
+      }
+    },
+    "Decision Tree": {
+      "accuracy": 0.7544,
+      "precision": 0.5259,
+      "recall": 0.7594,
+      "f1": 0.6214,
+      "roc_auc": 0.835,
+      "decision_threshold": 0.5,
+      "confusion_matrix": {
+        "true_negative": 779,
+        "false_positive": 256,
+        "false_negative": 90,
+        "true_positive": 284
+      }
+    },
+    "Random Forest": {
+      "accuracy": 0.748,
+      "precision": 0.5165,
+      "recall": 0.7968,
+      "f1": 0.6267,
+      "roc_auc": 0.844,
+      "decision_threshold": 0.5,
+      "confusion_matrix": {
+        "true_negative": 756,
+        "false_positive": 279,
+        "false_negative": 76,
+        "true_positive": 298
+      }
+    }
+  }
+}
