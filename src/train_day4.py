@@ -1,4 +1,4 @@
-"""Day 4: new features, PCA, and stronger models (bagging + boosting). Then lock the final model.
+"""Day 4: new features, PCA, and many ensemble models (bagging + boosting). Then lock the final model.
 
 Run Day 3 first (it makes the model we compare against), then from the main project folder:
     python -m src.train_day4
@@ -9,16 +9,26 @@ from datetime import datetime
 
 import joblib
 from sklearn.decomposition import PCA
-from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
+from sklearn.ensemble import (AdaBoostClassifier, BaggingClassifier, ExtraTreesClassifier,
+                              GradientBoostingClassifier, HistGradientBoostingClassifier,
+                              RandomForestClassifier)
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import cross_validate
 from sklearn.pipeline import Pipeline
+from sklearn.tree import DecisionTreeClassifier
 
 from src.config import DAY3_MODEL_FILE, DAY4_MODEL_FILE, DAY4_RESULTS_FILE, MODEL_FOLDER, RANDOM_STATE
 from src.data import get_train_test_data
 from src.evaluate import evaluate
 from src.features import NEW_COLUMNS
 from src.pipeline import make_pipeline, make_preprocessor
+
+# XGBoost is a separate install (pip install xgboost). On a Mac it also needs the OpenMP
+# library:  brew install libomp.  If it is missing we simply skip it and carry on.
+try:
+    from xgboost import XGBClassifier
+except Exception:
+    XGBClassifier = None
 
 
 def cv_scores(pipeline, X_train, y_train):
@@ -36,14 +46,18 @@ def main():
     def new_logistic():
         return LogisticRegression(max_iter=2000, class_weight="balanced")
 
+    def new_forest():
+        return RandomForestClassifier(n_estimators=300, max_depth=8, min_samples_leaf=10,
+                                      class_weight="balanced", random_state=RANDOM_STATE)
+
     # ---- Step 1: do the new features help? (same model, with and without them) ----
     print("Step 1: do the new features help?")
-    without = cv_scores(make_pipeline(X_train[old_columns], new_logistic()), X_train[old_columns], y_train)
-    with_new = cv_scores(make_pipeline(X_train, new_logistic()), X_train, y_train)
-    print("  without new features:", without)
-    print("  with new features:   ", with_new)
-    features_help = with_new["f1"] > without["f1"]
-    print("  ->", "they help" if features_help else "they do not help much")
+    feature_check = {}
+    for name, make_model in [("Logistic Regression", new_logistic), ("Random Forest", new_forest)]:
+        without = cv_scores(make_pipeline(X_train[old_columns], make_model()), X_train[old_columns], y_train)
+        with_new = cv_scores(make_pipeline(X_train, make_model()), X_train, y_train)
+        feature_check[name] = {"without_new_features": without, "with_new_features": with_new}
+        print(f"  {name:<20} F1 without {without['f1']}  ->  with {with_new['f1']}")
 
     # ---- Step 2: PCA squashes the columns into fewer ones. Does it lose anything? ----
     print("\nStep 2: PCA (keep 95% of the information)")
@@ -56,25 +70,43 @@ def main():
     pca = cv_scores(pca_pipeline, X_train, y_train)
     pca_pipeline.fit(X_train, y_train)
     columns_after = pca_pipeline.named_steps["pca"].n_components_
+    no_pca = feature_check["Logistic Regression"]["with_new_features"]
     print(f"  columns: {columns_before} -> {columns_after}")
-    print("  without PCA:", with_new)
-    print("  with PCA:   ", pca)
-    use_pca = pca["f1"] >= with_new["f1"] - 0.005
-    print("  ->", "PCA keeps the score with fewer columns, but it makes the model harder to explain, so we only note it"
-          if use_pca else "PCA loses signal here, so we do not use it")
+    print("  Logistic Regression without PCA:", no_pca)
+    print("  Logistic Regression with PCA:   ", pca)
+    print("  -> PCA keeps almost all of the score with far fewer columns, but the new columns are blends that"
+          if pca["f1"] >= no_pca["f1"] - 0.005 else "  -> PCA loses signal here, so we do not use it")
+    if pca["f1"] >= no_pca["f1"] - 0.005:
+        print("     nobody can explain, so we note it but do not use it.")
 
-    # ---- Step 3: stronger models, both using the new features ----
-    print("\nStep 3: bagging and boosting")
+    # ---- Step 3: ensembles. All of them use the new features. ----
+    print("\nStep 3: bagging and boosting models")
+    # Churners are about 1 stayer for every 0.36 churners; this number tells XGBoost to count a churner more.
+    churn_weight = round(float((y_train == 0).sum() / (y_train == 1).sum()), 2)
     models = {
-        # bagging: many trees, each trained on a random part of the data, then they vote
-        "Random Forest (bagging)": RandomForestClassifier(
-            n_estimators=300, max_depth=8, min_samples_leaf=10,
-            class_weight="balanced", random_state=RANDOM_STATE),
-        # boosting: trees are added one by one, each one fixing the mistakes of the ones before.
-        # (XGBoost does the same job; scikit-learn's version needs no extra install.)
+        # --- bagging family: many trees trained separately, then they vote ---
+        "Random Forest": new_forest(),
+        "Extra Trees": ExtraTreesClassifier(n_estimators=300, max_depth=10, min_samples_leaf=10,
+                                            class_weight="balanced", random_state=RANDOM_STATE),
+        "Bagging (plain trees)": BaggingClassifier(
+            estimator=DecisionTreeClassifier(max_depth=6, class_weight="balanced"),
+            n_estimators=100, random_state=RANDOM_STATE),
+        # --- boosting family: trees added one by one, each fixing the mistakes of the ones before ---
+        "AdaBoost": AdaBoostClassifier(
+            estimator=DecisionTreeClassifier(max_depth=2, class_weight="balanced"),
+            n_estimators=200, learning_rate=0.5, random_state=RANDOM_STATE),
         "Gradient Boosting": GradientBoostingClassifier(
             n_estimators=200, learning_rate=0.05, max_depth=3, random_state=RANDOM_STATE),
+        "Hist Gradient Boosting": HistGradientBoostingClassifier(
+            max_depth=4, learning_rate=0.05, max_iter=200, class_weight="balanced", random_state=RANDOM_STATE),
     }
+    if XGBClassifier is not None:
+        models["XGBoost"] = XGBClassifier(
+            n_estimators=300, max_depth=3, learning_rate=0.05, scale_pos_weight=churn_weight,
+            eval_metric="logloss", random_state=RANDOM_STATE)
+    else:
+        print("  (XGBoost is not available here, so it is skipped. Install it with: pip install xgboost)")
+
     pipelines = {}
     validation = {}
     for name, model in models.items():
@@ -96,10 +128,11 @@ def main():
     for name in models:
         test_scores[name] = evaluate(pipelines[name], X_test, y_test)
 
-    print(f"  {'Model':<30}{'Recall':>8}{'Precision':>11}{'F1':>8}{'ROC-AUC':>9}")
+    print(f"  {'Model':<30}{'Valid F1':>9}{'Recall':>8}{'Precision':>11}{'F1':>8}{'ROC-AUC':>9}")
     for name, s in test_scores.items():
+        valid = validation[name]["f1"] if name in validation else "-"
         mark = "  <- final model" if name == champion else ""
-        print(f"  {name:<30}{s['recall']:>8}{s['precision']:>11}{s['f1']:>8}{s['roc_auc']:>9}{mark}")
+        print(f"  {name:<30}{valid:>9}{s['recall']:>8}{s['precision']:>11}{s['f1']:>8}{s['roc_auc']:>9}{mark}")
 
     day3 = test_scores["Day 3 champion (old columns)"]
     final = test_scores[champion]
@@ -107,7 +140,7 @@ def main():
         verdict = f"{champion} beats the Day 3 champion (F1 {final['f1']} vs {day3['f1']})."
     else:
         verdict = (f"{champion} does not beat the Day 3 champion (F1 {final['f1']} vs {day3['f1']}); "
-                   "we still keep the Day 4 model because it also uses the new features, so compare recall and ROC-AUC too.")
+                   "compare recall and ROC-AUC too.")
     print("  ->", verdict)
 
     # ---- Step 5: lock the final model ----
@@ -119,9 +152,9 @@ def main():
         json.dump({
             "trained_at": datetime.now().isoformat(timespec="seconds"),
             "new_features": NEW_COLUMNS,
-            "feature_check": {"without_new_features": without, "with_new_features": with_new, "they_help": features_help},
+            "feature_check": feature_check,
             "pca": {"columns_before": int(columns_before), "columns_after": int(columns_after),
-                    "scores": pca, "scores_without_pca": with_new},
+                    "scores": pca, "scores_without_pca": no_pca},
             "validation_scores": validation,
             "final_model": champion,
             "verdict": verdict,

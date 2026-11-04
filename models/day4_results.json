@@ -1,5 +1,5 @@
 {
-  "trained_at": "2026-11-04T21:10:21",
+  "trained_at": "2026-11-04T21:16:36",
   "new_features": [
     "tenure_group",
     "charge_ratio",
@@ -9,15 +9,26 @@
     "pays_automatically"
   ],
   "feature_check": {
-    "without_new_features": {
-      "f1": 0.6322,
-      "recall": 0.804
+    "Logistic Regression": {
+      "without_new_features": {
+        "f1": 0.6322,
+        "recall": 0.804
+      },
+      "with_new_features": {
+        "f1": 0.6268,
+        "recall": 0.796
+      }
     },
-    "with_new_features": {
-      "f1": 0.6268,
-      "recall": 0.796
-    },
-    "they_help": false
+    "Random Forest": {
+      "without_new_features": {
+        "f1": 0.6341,
+        "recall": 0.7973
+      },
+      "with_new_features": {
+        "f1": 0.6349,
+        "recall": 0.8007
+      }
+    }
   },
   "pca": {
     "columns_before": 54,
@@ -32,17 +43,37 @@
     }
   },
   "validation_scores": {
-    "Random Forest (bagging)": {
+    "Random Forest": {
       "f1": 0.6349,
       "recall": 0.8007
+    },
+    "Extra Trees": {
+      "f1": 0.6293,
+      "recall": 0.786
+    },
+    "Bagging (plain trees)": {
+      "f1": 0.6346,
+      "recall": 0.7699
+    },
+    "AdaBoost": {
+      "f1": 0.6169,
+      "recall": 0.7545
     },
     "Gradient Boosting": {
       "f1": 0.5853,
       "recall": 0.5237
+    },
+    "Hist Gradient Boosting": {
+      "f1": 0.6285,
+      "recall": 0.7746
+    },
+    "XGBoost": {
+      "f1": 0.6303,
+      "recall": 0.788
     }
   },
-  "final_model": "Random Forest (bagging)",
-  "verdict": "Random Forest (bagging) beats the Day 3 champion (F1 0.634 vs 0.6267).",
+  "final_model": "Random Forest",
+  "verdict": "Random Forest beats the Day 3 champion (F1 0.634 vs 0.6267).",
   "test_scores": {
     "Day 3 champion (old columns)": {
       "accuracy": 0.748,
@@ -58,7 +89,7 @@
         "true_positive": 298
       }
     },
-    "Random Forest (bagging)": {
+    "Random Forest": {
       "accuracy": 0.7559,
       "precision": 0.5265,
       "recall": 0.7968,
@@ -70,6 +101,48 @@
         "false_positive": 268,
         "false_negative": 76,
         "true_positive": 298
+      }
+    },
+    "Extra Trees": {
+      "accuracy": 0.7502,
+      "precision": 0.5193,
+      "recall": 0.7914,
+      "f1": 0.6271,
+      "roc_auc": 0.8404,
+      "decision_threshold": 0.5,
+      "confusion_matrix": {
+        "true_negative": 761,
+        "false_positive": 274,
+        "false_negative": 78,
+        "true_positive": 296
+      }
+    },
+    "Bagging (plain trees)": {
+      "accuracy": 0.7651,
+      "precision": 0.5402,
+      "recall": 0.7727,
+      "f1": 0.6359,
+      "roc_auc": 0.8433,
+      "decision_threshold": 0.5,
+      "confusion_matrix": {
+        "true_negative": 789,
+        "false_positive": 246,
+        "false_negative": 85,
+        "true_positive": 289
+      }
+    },
+    "AdaBoost": {
+      "accuracy": 0.7665,
+      "precision": 0.5439,
+      "recall": 0.746,
+      "f1": 0.6291,
+      "roc_auc": 0.815,
+      "decision_threshold": 0.5,
+      "confusion_matrix": {
+        "true_negative": 801,
+        "false_positive": 234,
+        "false_negative": 95,
+        "true_positive": 279
       }
     },
     "Gradient Boosting": {
@@ -84,6 +157,34 @@
         "false_positive": 96,
         "false_negative": 175,
         "true_positive": 199
+      }
+    },
+    "Hist Gradient Boosting": {
+      "accuracy": 0.7573,
+      "precision": 0.529,
+      "recall": 0.7807,
+      "f1": 0.6307,
+      "roc_auc": 0.8423,
+      "decision_threshold": 0.5,
+      "confusion_matrix": {
+        "true_negative": 775,
+        "false_positive": 260,
+        "false_negative": 82,
+        "true_positive": 292
+      }
+    },
+    "XGBoost": {
+      "accuracy": 0.7466,
+      "precision": 0.5149,
+      "recall": 0.7834,
+      "f1": 0.6214,
+      "roc_auc": 0.8452,
+      "decision_threshold": 0.5,
+      "confusion_matrix": {
+        "true_negative": 759,
+        "false_positive": 276,
+        "false_negative": 81,
+        "true_positive": 293
       }
     }
   }

@@ -60,6 +60,7 @@ retailmind-ai/
 │   ├── train_day2.py    # Day 2: compare Decision Tree, Random Forest, SVM
 │   ├── train_day3.py    # Day 3: tune the models, check underfit / overfit
 │   ├── features.py      # Day 4: the 6 new columns
+│   ├── regression_demo.py  # predict a number (monthly bill) with Linear Regression
 │   ├── train_day4.py    # Day 4: features, PCA, bagging + boosting, final model
 │   └── service.py       # predict() helper + command line
 ├── docs/
@@ -92,6 +93,9 @@ python -m src.train_day3
 
 # Day 4: new features, PCA, bagging + boosting, lock the final model
 python -m src.train_day4
+
+# Bonus: predict a NUMBER (the monthly bill) with Linear Regression
+python -m src.regression_demo
 
 # Score the built-in demo customers (uses the newest model)
 python -m src.service
@@ -178,15 +182,31 @@ Hold-out set: **1,409 customers** (374 churned). Decision threshold: **0.50**. T
 
 Every model has settings (hyperparameters). We tried every combination with `GridSearchCV` and 5-fold cross-validation, scoring by **F1**. Then we compared the **train** score with the **validation** score: a big gap means overfitting (high variance), two low scores mean underfitting (high bias).
 
+Six different kinds of model were tuned:
+
 | Model | Best settings | Train F1 | Validation F1 | Diagnosis |
 | --- | --- | ---: | ---: | --- |
 | Logistic Regression | C = 0.1 | 0.6336 | 0.6326 | balanced |
+| K-Nearest Neighbours | n_neighbors = 31, weights = uniform | 0.6254 | 0.6056 | balanced |
+| Naive Bayes | var_smoothing = 0.001 | 0.5968 | 0.5956 | balanced |
+| SVM | C = 0.3 | 0.6380 | 0.6233 | balanced |
 | Decision Tree | max_depth = 5, min_samples_leaf = 50 | 0.6391 | 0.6211 | balanced |
 | **Random Forest** | n_estimators = 100, max_depth = 8, min_samples_leaf = 10 | 0.6766 | **0.6370** | balanced (champion) |
 
 Learning curve for the champion: the validation F1 stays around 0.63 from 900 up to 4,500 customers, so **more data alone will not help; better features might** (that is Day 4). The champion is saved as `models/churn_v3.joblib`.
 
-On the 1,409 test customers: Random Forest recall **0.7968**, precision 0.5165, F1 0.6267, ROC-AUC 0.844.
+On the 1,409 test customers (threshold 0.50):
+
+| Model | Recall | Precision | F1 | ROC-AUC |
+| --- | ---: | ---: | ---: | ---: |
+| Logistic Regression | 0.7861 | 0.5087 | 0.6176 | 0.8410 |
+| K-Nearest Neighbours | 0.6016 | 0.6131 | 0.6073 | 0.8285 |
+| Naive Bayes | **0.8369** | 0.4589 | 0.5928 | 0.8075 |
+| SVM | 0.6364 | 0.5920 | 0.6134 | 0.8272 |
+| Decision Tree | 0.7594 | 0.5259 | 0.6214 | 0.8350 |
+| **Random Forest** | 0.7968 | 0.5165 | **0.6267** | **0.8440** |
+
+Naive Bayes catches the most churners but is wrong more often, so its F1 and ROC-AUC are the lowest. Random Forest has the best balance, which is why it is the champion.
 
 ---
 
@@ -196,18 +216,29 @@ We added 6 new columns (`src/features.py`): tenure bucket, charge ratio, month-t
 
 | Check | Result |
 | --- | --- |
-| Do the new features help? (Logistic Regression, CV F1) | 0.6322 without → 0.6268 with. Not for a simple linear model. |
+| Do the new features help? (CV F1, same model with and without) | Logistic Regression 0.6322 → 0.6268 (no). Random Forest 0.6341 → 0.6349 (a tiny gain). |
 | PCA (keep 95% of the information) | 54 columns → 20. CV F1 0.6254 vs 0.6268, so almost no loss, but the model becomes harder to explain, so we do not use it. |
 
-Bagging and boosting, both using the new features, compared with the Day 3 champion on the test customers:
+Seven ensembles, all using the new features, compared with the Day 3 champion. The "Valid F1" column is the 5-fold cross-validation score on the training customers (this is what picks the final model); the other columns are on the test customers:
 
-| Model | Recall | Precision | F1 | ROC-AUC |
-| --- | ---: | ---: | ---: | ---: |
-| Day 3 champion (old columns) | 0.7968 | 0.5165 | 0.6267 | 0.8440 |
-| **Random Forest (bagging) — final model** | **0.7968** | 0.5265 | **0.6340** | 0.8442 |
-| Gradient Boosting | 0.5321 | 0.6746 | 0.5949 | 0.8459 |
+| Model | Family | Valid F1 | Recall | Precision | F1 | ROC-AUC |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| Day 3 champion (old columns) | — | — | 0.7968 | 0.5165 | 0.6267 | 0.8440 |
+| **Random Forest — final model** | bagging | **0.6349** | **0.7968** | 0.5265 | 0.6340 | 0.8442 |
+| Extra Trees | bagging | 0.6293 | 0.7914 | 0.5193 | 0.6271 | 0.8404 |
+| Bagging (plain trees) | bagging | 0.6346 | 0.7727 | 0.5402 | 0.6359 | 0.8433 |
+| AdaBoost | boosting | 0.6169 | 0.7460 | 0.5439 | 0.6291 | 0.8150 |
+| Gradient Boosting | boosting | 0.5853 | 0.5321 | 0.6746 | 0.5949 | 0.8459 |
+| Hist Gradient Boosting | boosting | 0.6285 | 0.7807 | 0.5290 | 0.6307 | 0.8423 |
+| XGBoost | boosting | 0.6303 | 0.7834 | 0.5149 | 0.6214 | 0.8452 |
 
-Random Forest is the final model: a small but real step up on F1 and precision, with the same recall. Boosting ranks customers slightly best (ROC-AUC 0.8459) but at the 0.50 cut-off it flags fewer churners (recall 0.53). Moving that cut-off is a later improvement. XGBoost does the same job as the boosting model used here; scikit-learn's version was used because it needs no extra install.
+Random Forest is the final model because it has the best validation F1 (it was chosen without looking at the test customers). The truth is that **Random Forest, Bagging, Hist Gradient Boosting and XGBoost are practically tied**: their F1 scores are within about 0.01 of each other, which is smaller than the normal noise of a 1,409-customer test set. The models without a `class_weight` option (Gradient Boosting) flag fewer churners at the 0.50 cut-off (recall 0.53) even though their ROC-AUC is among the best; moving the cut-off is a later improvement.
+
+XGBoost needs `pip install xgboost`, and on a Mac also `brew install libomp`. If it is missing, `train_day4.py` skips it and carries on.
+
+### Regression demo (predicting a number)
+
+Churn is a **classification** problem (yes / no). **Regression** predicts a number. `python -m src.regression_demo` predicts each customer's monthly bill with Linear Regression, Ridge Regression and a Random Forest Regressor (average error about 0.8 on an average bill of 64.76, R² 0.999). It is easy because a customer's bill is almost the sum of the services they chose.
 
 The final model is saved as `models/churn_final.joblib`. The saved file contains the data preparation (scaling and one-hot) **and** the model, and the new columns come from `src/features.py`, so serving prepares data exactly like training.
 

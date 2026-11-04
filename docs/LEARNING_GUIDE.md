@@ -97,7 +97,9 @@ Compare two scores: the **train score** (on customers the model studied) and the
 | low | low | too simple to learn the pattern | **underfitting** (high bias) |
 | high | about the same | learning properly | balanced |
 
-Our Random Forest: train F1 0.677, validation F1 0.637. A small gap, so it is balanced.
+We tuned six models: Logistic Regression, K-Nearest Neighbours, Naive Bayes, SVM, Decision Tree and Random Forest. All six came out balanced (no big gaps), and Random Forest had the best validation score. Its train F1 was 0.677 and its validation F1 0.637, a small gap.
+
+Notice what tuning could **not** do: the six models ended up with validation F1 scores between 0.596 and 0.637. When many different models land in the same narrow band, the limit usually comes from the **data** (the clues we gave), not the model, which is the hint that leads to Day 4.
 
 ### Learning curve (should we collect more data?)
 We train on 900, 1,800, ... 4,500 customers and watch the validation score. Ours stayed flat at about 0.63. So **more data would not help**. The model needs better information, which leads straight to Day 4.
@@ -113,7 +115,7 @@ A **feature** is one column of clues. We made 6 new ones in `features.py`, using
 - month-to-month flag (free to leave any time),
 - has internet, number of services, pays automatically (customers who are more "tied in" stay).
 
-**Honest result:** for the simple Logistic Regression these did not help (F1 0.6322 to 0.6268). Not every good idea works, and measuring is how you find out. The tree models could use them a little better.
+**Honest result:** for Logistic Regression the new features did not help (F1 0.6322 to 0.6268), and for Random Forest they helped only a tiny bit (0.6341 to 0.6349). Not every good idea works, and measuring is how you find out.
 
 ### PCA (squash many columns into fewer)
 After one-hot encoding we have 54 columns, many saying similar things. PCA combines them into 20 "mixed" columns that keep 95% of the information. The score barely changed (0.6254 vs 0.6268). But the new columns are blends that nobody can explain ("what does column 7 mean?"), so for this project we only noted it and did not use it.
@@ -122,14 +124,42 @@ After one-hot encoding we have 54 columns, many saying similar things. PCA combi
 - **Bagging** (Random Forest): many trees trained **separately** on random pieces of the data, then they vote. This reduces overfitting.
 - **Boosting** (Gradient Boosting, like XGBoost): trees are added **one after another**, and each new tree focuses on the mistakes of the previous ones.
 
-**Result:** Random Forest (F1 0.634, recall 0.797) was the final model. Boosting had the best ranking (ROC-AUC 0.8459) but at the 0.5 cut-off it caught only 53% of leavers. A later day can fix that by moving the cut-off.
+We compared seven ensembles: Random Forest, Extra Trees and Bagging (the bagging family), and AdaBoost, Gradient Boosting, Hist Gradient Boosting and XGBoost (the boosting family).
+
+**Result:** Random Forest was the final model (best validation F1 0.6349, test recall 0.797). But look at the table in the README: Random Forest, Bagging, Hist Gradient Boosting and XGBoost are **practically tied** (their F1 scores are within about 0.01). With only 1,409 test customers, a difference that small is noise, not proof. Gradient Boosting (the plain version has no `class_weight` setting) caught only 53% of leavers at the 0.5 cut-off even though its ranking (ROC-AUC) was among the best. A later day can fix that by moving the cut-off.
 
 ### Locking the model
 `churn_final.joblib` stores the preparation **and** the model together. When the service scores a new customer, `add_features` builds the new columns, then the saved preparation and model do the rest, exactly as in training.
 
 ---
 
-## 5. The whole story in one table
+## 5. The model zoo: what each model is, in one or two lines
+
+First, two families of problem:
+- **Classification:** the answer is a group. "Will this customer leave: yes or no?" This is our project.
+- **Regression:** the answer is a number. "What will this customer's monthly bill be?" See `src/regression_demo.py`.
+
+| Model | Type | How it thinks | Good at | Watch out for |
+| --- | --- | --- | --- | --- |
+| **Linear Regression** | regression | draws the best straight line through the data and predicts a number from it | predicting numbers (a bill, a price) when the pattern is roughly a straight line | not for yes/no answers |
+| **Logistic Regression** | classification | adds up weighted clues and turns the total into a probability | a fast, explainable baseline | cannot learn curved patterns on its own |
+| **K-Nearest Neighbours** | classification | "find the 31 most similar customers; copy what most of them did" | simple, no training | slow on big data; needs scaled columns; no `class_weight` |
+| **Naive Bayes** | classification | uses probability rules, assuming every clue is independent of the others | very fast, works with little data | the "independent clues" assumption is often wrong (here it flags many false alarms) |
+| **SVM** | classification | finds the widest possible gap between the two groups | medium-size data with clear separation | slow to tune; hard to explain |
+| **Decision Tree** | classification | a flowchart of yes/no questions | easy to read | one tree overfits easily |
+| **Random Forest** | bagging | hundreds of different trees vote | strong all-rounder, hard to break | less readable than one tree |
+| **Extra Trees** | bagging | like a Random Forest but splits are chosen more randomly | fast, sometimes less overfitting | slightly less accurate here |
+| **Bagging** | bagging | many copies of one model, each trained on a random sample, then vote | calms down a jumpy model | needs a decent base model |
+| **AdaBoost** | boosting | after each tree, give the customers it got wrong more weight | simple boosting | sensitive to noisy data |
+| **Gradient Boosting** | boosting | each new tree predicts the **errors** of the trees before it | often very accurate | slower; easy to overfit if run too long |
+| **Hist Gradient Boosting** | boosting | the same, but groups numbers into bins so it is much faster | bigger data | same care as Gradient Boosting |
+| **XGBoost** | boosting | a fast, polished, popular version of Gradient Boosting | winning data competitions; handles missing values | extra install; many settings |
+
+**Which one should you use?** There is no best model for every problem. You try several on the **same** data with the **same** fair test, and let the numbers decide, which is exactly what Days 2 to 4 did. On this data the tree-based models won by a small margin, and the simple Logistic Regression was surprisingly close.
+
+---
+
+## 6. The whole story in one table
 
 | Day | Model | Recall | Precision | F1 |
 | --- | --- | ---: | ---: | ---: |
@@ -142,7 +172,7 @@ Notice: the **big** gain came from understanding the problem (use `balanced` so 
 
 ---
 
-## 6. Words to remember
+## 7. Words to remember
 
 | Word | Meaning |
 | --- | --- |
@@ -165,7 +195,7 @@ Notice: the **big** gain came from understanding the problem (use `balanced` so 
 
 ---
 
-## 7. Try it yourself (best way to learn)
+## 8. Try it yourself (best way to learn)
 
 1. Run `python -m src.train` and open `models/metrics.json`. Find the four numbers of the confusion matrix and check recall by hand.
 2. In `train_day2.py` remove `class_weight="balanced"` from the Random Forest and rerun. What happens to recall?

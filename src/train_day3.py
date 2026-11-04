@@ -1,4 +1,4 @@
-"""Day 3: tune each model, check for underfitting / overfitting, and lock the best one.
+"""Day 3: tune six different models, check for underfitting / overfitting, and lock the best one.
 
 Run from the main project folder:   python -m src.train_day3
 """
@@ -10,6 +10,9 @@ import joblib
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import GridSearchCV, learning_curve
+from sklearn.naive_bayes import GaussianNB
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 
 from src.config import DAY3_MODEL_FILE, DAY3_RESULTS_FILE, MODEL_FOLDER, RANDOM_STATE
@@ -35,10 +38,21 @@ def main():
 
     # For each model: the model, and the settings we want to try for it.
     # "model__" means "this setting belongs to the model step of the pipeline".
+    # class_weight="balanced" is used wherever a model has it (see Day 2). K-Nearest
+    # Neighbours and Naive Bayes do not have it, so they will tend to catch fewer churners.
     candidates = {
         "Logistic Regression": (
             LogisticRegression(max_iter=2000, class_weight="balanced"),
             {"model__C": [0.01, 0.1, 1, 10]}),
+        "K-Nearest Neighbours": (
+            KNeighborsClassifier(),
+            {"model__n_neighbors": [5, 15, 31, 51], "model__weights": ["uniform", "distance"]}),
+        "Naive Bayes": (
+            GaussianNB(),
+            {"model__var_smoothing": [1e-9, 1e-6, 1e-3, 1e-1]}),
+        "SVM": (
+            SVC(probability=True, class_weight="balanced", random_state=RANDOM_STATE),
+            {"model__C": [0.3, 1, 3]}),
         "Decision Tree": (
             DecisionTreeClassifier(class_weight="balanced", random_state=RANDOM_STATE),
             {"model__max_depth": [3, 5, 8, 12], "model__min_samples_leaf": [1, 20, 50]}),
@@ -103,7 +117,7 @@ def main():
     # ---- show everything ----
     print()
     print(f"{'Model':<22}{'Train F1':>10}{'Valid F1':>10}   Diagnosis")
-    print("-" * 90)
+    print("-" * 95)
     for name, r in results.items():
         mark = "  <- champion" if name == champion else ""
         print(f"{name:<22}{r['train_score']:>10}{r['validation_score']:>10}   {r['diagnosis']}{mark}")
