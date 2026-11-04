@@ -1,8 +1,7 @@
+import pandas as pd
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
-
-from src.config import NUMBER_COLUMNS
 
 
 def make_preprocessor(X):
@@ -10,15 +9,21 @@ def make_preprocessor(X):
 
     - number columns are scaled so big numbers do not drown out small ones
     - text columns (like "Contract") are turned into 0/1 columns (one-hot)
+
+    The columns are sorted by type automatically, so new columns that we add
+    later (Day 4) are handled without changing this code.
     """
+    number_columns = []
     text_columns = []
     for column in X.columns:
-        if column not in NUMBER_COLUMNS:
+        if pd.api.types.is_numeric_dtype(X[column]):
+            number_columns.append(column)
+        else:
             text_columns.append(column)
 
     return ColumnTransformer([
-        ("numbers", StandardScaler(), NUMBER_COLUMNS),
-        ("text", OneHotEncoder(handle_unknown="ignore"), text_columns),
+        ("numbers", StandardScaler(), number_columns),
+        ("text", OneHotEncoder(handle_unknown="ignore", sparse_output=False), text_columns),
     ])
 
 

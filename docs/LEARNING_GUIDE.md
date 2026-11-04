@@ -1,0 +1,174 @@
+# RetailMind learning guide: Days 1 to 4, from the beginning
+
+This guide explains what the code does and **why**, in plain English. Read it with the code open next to it. Every "file" name below is in the `src/` folder.
+
+---
+
+## 0. The problem: which customers are about to leave?
+
+A phone company has 7,043 customers. About **1 in 4 (26.5%)** left ("churned"). If the company could spot who is about to leave, it could call them with an offer. So we build a **model**: a program that looks at a customer's details and guesses "will leave" or "will stay".
+
+How does a model learn? Like a student with past exam papers:
+
+1. Show it many past customers **with the answer** (left / stayed). This is **training**.
+2. Hide the answers for other customers and ask it to guess. This is **testing**.
+3. Count how often it is right.
+
+---
+
+## 1. Day 1: the baseline
+
+**Goal:** the simplest model that works end to end, so every later day has something to beat.
+
+### Step 1: Load and clean the data (`data.py`)
+- The data is a table: one row per customer, columns like `tenure` (months), `Contract`, `MonthlyCharges`, and the answer column `Churn` ("Yes"/"No").
+- Models only understand numbers, so `Churn` becomes `1` for Yes and `0` for No.
+- `TotalCharges` was stored as text and 11 brand-new customers had it blank. We turn it into a number and make blanks `0` (they have not paid anything yet).
+
+### Step 2: Split into training and test (`get_train_test_data`)
+- 80% of customers (5,634) are for **training**. 20% (1,409) are **locked away** for the final test.
+- Why lock some away? A student who memorises the answers to the practice paper looks brilliant on that paper but fails a new one. The test customers are the "new paper".
+- `stratify=y` keeps the same share of leavers in both parts.
+- `random_state=42` makes the split the same every time, so results can be compared.
+
+### Step 3: Prepare the columns (`pipeline.py`)
+- **Number columns** (tenure, MonthlyCharges...) get **scaled** (`StandardScaler`) so a column like TotalCharges (up to 8,000) does not drown out SeniorCitizen (0 or 1).
+- **Text columns** (Contract, PaymentMethod...) get **one-hot encoded**: "Contract" becomes three 0/1 columns, "Is it month-to-month? Is it one-year? Is it two-year?". A model cannot do maths on the word "Month-to-month".
+- Both steps and the model are joined in one `Pipeline`. This is important: the **same** preparation is applied when you train and when you predict later.
+
+### Step 4: Train the model (`train.py`)
+- We use **Logistic Regression**: it gives each column a weight, adds them up, and turns the total into a probability between 0 and 1 ("62% likely to leave"). If the probability is 0.5 or more we say "will leave".
+
+### Step 5: Score it (`evaluate.py`). This is the part most people get wrong
+Our results on the 1,409 test customers:
+
+|  | Predicted stay | Predicted churn |
+| --- | ---: | ---: |
+| Actually stayed | 926 | 109 |
+| Actually churned | 165 | 209 |
+
+- **Accuracy 0.8055** = (926 + 209) / 1,409. Sounds good, but a lazy model that always says "stay" would already score about 0.73! Accuracy hides the problem.
+- **Recall 0.5588** = 209 / (209 + 165). "Of the customers who really left, how many did we catch?" We caught only 56%. For this business, **recall is the number that matters**, because every missed leaver is a lost customer.
+- **Precision 0.6572** = 209 / (209 + 109). "When we say someone will leave, how often are we right?"
+- **F1** = one number that balances precision and recall (it is low if either is low).
+- **ROC-AUC 0.8421** = "pick one leaver and one stayer at random: how often does the model give the leaver the higher probability?" 0.5 is a coin flip, 1.0 is perfect.
+
+**Day 1 lesson:** a model can look good on accuracy and still miss almost half of the people you care about.
+
+---
+
+## 2. Day 2: try three stronger models
+
+**Goal:** catch more leavers.
+
+The three new models, in plain words:
+- **Decision Tree:** a flowchart of yes/no questions. "Is the contract month-to-month? Yes → Is tenure under 12 months? Yes → likely to leave."
+- **Random Forest:** hundreds of different trees that each vote. The crowd is wiser than one tree.
+- **SVM:** draws the best dividing line (or curve) between the leavers and the stayers.
+
+**The key trick: `class_weight="balanced"`.** Only 1 in 4 customers leaves, so a model can get a good score by mostly saying "stay". `balanced` tells it: "a leaver counts about three times as much as a stayer". It then tries harder to catch leavers.
+
+**Fair comparison:** all models use the same customers, the same preparation (`make_pipeline`) and the same random seed. If anything differs, you cannot tell why one won.
+
+**Result:** Random Forest won with recall **0.79** (Day 1 was 0.56). The price: precision fell from 0.66 to 0.53, so more loyal customers get flagged by mistake. That is a fair trade when a retention offer costs less than losing a customer.
+
+---
+
+## 3. Day 3: tuning, and "is it learning or memorising?"
+
+### Hyperparameters (the model's settings)
+A Random Forest has settings you choose before training, like how many trees (`n_estimators`) and how deep each tree may grow (`max_depth`). These are **hyperparameters**.
+
+### GridSearchCV (try every combination)
+`GridSearchCV` is "try every combination of settings, and tell me which is best". To judge fairly it uses **cross-validation**:
+
+1. Split the 5,634 training customers into 5 parts.
+2. Train on 4 parts, score on the 5th (the "validation" part). Repeat so every part gets a turn.
+3. Average the 5 scores.
+
+This gives a steadier score than one lucky split. The test customers are still untouched.
+
+### Bias and variance: the most important idea of the day
+Compare two scores: the **train score** (on customers the model studied) and the **validation score** (on customers it has not seen).
+
+| Train score | Validation score | What it means | Called |
+| --- | --- | --- | --- |
+| high | much lower | memorising the practice paper | **overfitting** (high variance) |
+| low | low | too simple to learn the pattern | **underfitting** (high bias) |
+| high | about the same | learning properly | balanced |
+
+Our Random Forest: train F1 0.677, validation F1 0.637. A small gap, so it is balanced.
+
+### Learning curve (should we collect more data?)
+We train on 900, 1,800, ... 4,500 customers and watch the validation score. Ours stayed flat at about 0.63. So **more data would not help**. The model needs better information, which leads straight to Day 4.
+
+---
+
+## 4. Day 4: better features, PCA, and ensembles
+
+### Features
+A **feature** is one column of clues. We made 6 new ones in `features.py`, using our own business sense:
+- tenure bucket (new customers leave more),
+- charge ratio (did the price go up?),
+- month-to-month flag (free to leave any time),
+- has internet, number of services, pays automatically (customers who are more "tied in" stay).
+
+**Honest result:** for the simple Logistic Regression these did not help (F1 0.6322 to 0.6268). Not every good idea works, and measuring is how you find out. The tree models could use them a little better.
+
+### PCA (squash many columns into fewer)
+After one-hot encoding we have 54 columns, many saying similar things. PCA combines them into 20 "mixed" columns that keep 95% of the information. The score barely changed (0.6254 vs 0.6268). But the new columns are blends that nobody can explain ("what does column 7 mean?"), so for this project we only noted it and did not use it.
+
+### Bagging vs boosting
+- **Bagging** (Random Forest): many trees trained **separately** on random pieces of the data, then they vote. This reduces overfitting.
+- **Boosting** (Gradient Boosting, like XGBoost): trees are added **one after another**, and each new tree focuses on the mistakes of the previous ones.
+
+**Result:** Random Forest (F1 0.634, recall 0.797) was the final model. Boosting had the best ranking (ROC-AUC 0.8459) but at the 0.5 cut-off it caught only 53% of leavers. A later day can fix that by moving the cut-off.
+
+### Locking the model
+`churn_final.joblib` stores the preparation **and** the model together. When the service scores a new customer, `add_features` builds the new columns, then the saved preparation and model do the rest, exactly as in training.
+
+---
+
+## 5. The whole story in one table
+
+| Day | Model | Recall | Precision | F1 |
+| --- | --- | ---: | ---: | ---: |
+| 1 | Logistic Regression | 0.559 | 0.657 | 0.604 |
+| 2 | Random Forest | 0.791 | 0.526 | 0.632 |
+| 3 | Random Forest, tuned | 0.797 | 0.517 | 0.627 |
+| 4 | Random Forest + new features | 0.797 | 0.527 | 0.634 |
+
+Notice: the **big** gain came from understanding the problem (use `balanced` so we catch leavers). The later days gave small steady gains. In real projects that is normal.
+
+---
+
+## 6. Words to remember
+
+| Word | Meaning |
+| --- | --- |
+| Feature | one column of clues about a customer |
+| Target | the answer column we predict (`Churn`) |
+| Train / test split | study part vs locked-away exam part |
+| Pipeline | preparation steps + model joined into one object |
+| One-hot encoding | turning a text column into 0/1 columns |
+| Scaling | putting number columns on a similar size |
+| Recall | of the real leavers, how many we caught |
+| Precision | of the people we flagged, how many really left |
+| F1 | one number balancing precision and recall |
+| ROC-AUC | how well the model ranks leavers above stayers |
+| Hyperparameter | a setting chosen before training |
+| Cross-validation | scoring on 5 different splits and averaging |
+| Overfitting | great on training data, worse on new data |
+| Underfitting | too simple to learn the pattern |
+| PCA | squashing many columns into fewer |
+| Bagging / boosting | trees that vote together / trees that fix each other's mistakes |
+
+---
+
+## 7. Try it yourself (best way to learn)
+
+1. Run `python -m src.train` and open `models/metrics.json`. Find the four numbers of the confusion matrix and check recall by hand.
+2. In `train_day2.py` remove `class_weight="balanced"` from the Random Forest and rerun. What happens to recall?
+3. In `train_day3.py` add `20` to the `n_estimators` list and rerun. Did the best settings change?
+4. In `features.py` add a new column of your own idea and look at `train_day4.py` Step 1 to see if it helps.
+5. Change `THRESHOLD` in `config.py` from 0.5 to 0.4 and rerun `python -m src.train`. Recall goes up, precision goes down. Why? (Hint: a lower cut-off flags more customers as "will leave".)

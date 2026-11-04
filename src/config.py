@@ -11,6 +11,10 @@ DAY1_MODEL_FILE = "models/churn_pipeline.joblib"         # Day 1: logistic regre
 DAY1_METRICS_FILE = "models/metrics.json"
 CHAMPION_MODEL_FILE = "models/champion_pipeline.joblib"  # Day 2: the best of the three new models
 DAY2_COMPARISON_FILE = "models/day2_comparison.json"
+DAY3_MODEL_FILE = "models/churn_v3.joblib"               # Day 3: the tuned champion
+DAY3_RESULTS_FILE = "models/day3_tuning.json"
+DAY4_MODEL_FILE = "models/churn_final.joblib"            # Day 4: the final production model
+DAY4_RESULTS_FILE = "models/day4_results.json"
 
 # --- column names ---
 TARGET_COLUMN = "Churn"          # what we want to predict (Yes / No)

@@ -11,7 +11,9 @@ import sys
 import joblib
 import pandas as pd
 
-from src.config import CHAMPION_MODEL_FILE, DAY1_MODEL_FILE, THRESHOLD
+from src.config import (CHAMPION_MODEL_FILE, DAY1_MODEL_FILE, DAY3_MODEL_FILE,
+                        DAY4_MODEL_FILE, THRESHOLD)
+from src.features import add_features
 
 # Two made-up customers so you can try the service straight away.
 SAMPLE_CUSTOMERS = [
@@ -35,13 +37,13 @@ SAMPLE_CUSTOMERS = [
 
 
 def load_model(model_file=None):
-    """Load a saved model. By default use the Day 2 champion, or the Day 1 model if
-    the champion has not been trained yet."""
+    """Load a saved model. By default use the newest one that exists:
+    Day 4 final model, then Day 3, then Day 2, then the Day 1 baseline."""
     if model_file is None:
-        if os.path.exists(CHAMPION_MODEL_FILE):
-            model_file = CHAMPION_MODEL_FILE
-        else:
-            model_file = DAY1_MODEL_FILE
+        for candidate in [DAY4_MODEL_FILE, DAY3_MODEL_FILE, CHAMPION_MODEL_FILE, DAY1_MODEL_FILE]:
+            if os.path.exists(candidate):
+                model_file = candidate
+                break
     return joblib.load(model_file)
 
 
@@ -68,15 +70,18 @@ def predict(customers, model_file=None):
     else:
         table = pd.DataFrame(customers)
 
+    # Same fix as in training: TotalCharges must be a number, blank becomes 0.
+    table["TotalCharges"] = pd.to_numeric(table["TotalCharges"], errors="coerce").fillna(0)
+
+    # Build the Day 4 columns too. Older models simply ignore the ones they do not use.
+    table = add_features(table)
+
     # The model remembers which columns it was trained on.
     needed_columns = list(pipeline.feature_names_in_)
     missing = [c for c in needed_columns if c not in table.columns]
     if missing:
         raise ValueError("These columns are missing: " + ", ".join(missing))
     table = table[needed_columns].copy()
-
-    # Same fix as in training: TotalCharges must be a number, blank becomes 0.
-    table["TotalCharges"] = pd.to_numeric(table["TotalCharges"], errors="coerce").fillna(0)
 
     probabilities = pipeline.predict_proba(table)[:, 1]
 

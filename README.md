@@ -58,7 +58,12 @@ retailmind-ai/
 │   ├── evaluate.py      # scores (recall, precision, F1 ...)
 │   ├── train.py         # Day 1: train the logistic regression baseline
 │   ├── train_day2.py    # Day 2: compare Decision Tree, Random Forest, SVM
+│   ├── train_day3.py    # Day 3: tune the models, check underfit / overfit
+│   ├── features.py      # Day 4: the 6 new columns
+│   ├── train_day4.py    # Day 4: features, PCA, bagging + boosting, final model
 │   └── service.py       # predict() helper + command line
+├── docs/
+│   └── LEARNING_GUIDE.md   # Days 1-4 explained in plain English
 ├── models/              # persisted pipeline + metrics (generated)
 ├── notebooks/
 │   └── 01_eda_and_baseline.ipynb
@@ -82,7 +87,13 @@ python -m src.train
 # Day 2: train Decision Tree, Random Forest and SVM, compare, save the champion
 python -m src.train_day2
 
-# Score the built-in demo customers (uses the Day 2 champion)
+# Day 3: tune every model, check bias / variance, lock the champion
+python -m src.train_day3
+
+# Day 4: new features, PCA, bagging + boosting, lock the final model
+python -m src.train_day4
+
+# Score the built-in demo customers (uses the newest model)
 python -m src.service
 
 # Or score a CSV of customers
@@ -97,6 +108,8 @@ Outputs:
 - `models/metrics.json` — Day 1 scores for later comparison
 - `models/champion_pipeline.joblib` — the Day 2 champion (best of the three new models)
 - `models/day2_comparison.json` — every model's scores and why the champion won
+- `models/churn_v3.joblib` + `models/day3_tuning.json` — the Day 3 tuned champion and what we found
+- `models/churn_final.joblib` + `models/day4_results.json` — the Day 4 final model and its results
 - `reports/data_profile.json` — a few simple facts about the raw data
 
 ---
@@ -161,6 +174,58 @@ Hold-out set: **1,409 customers** (374 churned). Decision threshold: **0.50**. T
 
 ---
 
+## Day 3 — Tuning and bias / variance
+
+Every model has settings (hyperparameters). We tried every combination with `GridSearchCV` and 5-fold cross-validation, scoring by **F1**. Then we compared the **train** score with the **validation** score: a big gap means overfitting (high variance), two low scores mean underfitting (high bias).
+
+| Model | Best settings | Train F1 | Validation F1 | Diagnosis |
+| --- | --- | ---: | ---: | --- |
+| Logistic Regression | C = 0.1 | 0.6336 | 0.6326 | balanced |
+| Decision Tree | max_depth = 5, min_samples_leaf = 50 | 0.6391 | 0.6211 | balanced |
+| **Random Forest** | n_estimators = 100, max_depth = 8, min_samples_leaf = 10 | 0.6766 | **0.6370** | balanced (champion) |
+
+Learning curve for the champion: the validation F1 stays around 0.63 from 900 up to 4,500 customers, so **more data alone will not help; better features might** (that is Day 4). The champion is saved as `models/churn_v3.joblib`.
+
+On the 1,409 test customers: Random Forest recall **0.7968**, precision 0.5165, F1 0.6267, ROC-AUC 0.844.
+
+---
+
+## Day 4 — Features, PCA and ensembles
+
+We added 6 new columns (`src/features.py`): tenure bucket, charge ratio, month-to-month flag, has-internet flag, number of services, and pays-automatically flag.
+
+| Check | Result |
+| --- | --- |
+| Do the new features help? (Logistic Regression, CV F1) | 0.6322 without → 0.6268 with. Not for a simple linear model. |
+| PCA (keep 95% of the information) | 54 columns → 20. CV F1 0.6254 vs 0.6268, so almost no loss, but the model becomes harder to explain, so we do not use it. |
+
+Bagging and boosting, both using the new features, compared with the Day 3 champion on the test customers:
+
+| Model | Recall | Precision | F1 | ROC-AUC |
+| --- | ---: | ---: | ---: | ---: |
+| Day 3 champion (old columns) | 0.7968 | 0.5165 | 0.6267 | 0.8440 |
+| **Random Forest (bagging) — final model** | **0.7968** | 0.5265 | **0.6340** | 0.8442 |
+| Gradient Boosting | 0.5321 | 0.6746 | 0.5949 | 0.8459 |
+
+Random Forest is the final model: a small but real step up on F1 and precision, with the same recall. Boosting ranks customers slightly best (ROC-AUC 0.8459) but at the 0.50 cut-off it flags fewer churners (recall 0.53). Moving that cut-off is a later improvement. XGBoost does the same job as the boosting model used here; scikit-learn's version was used because it needs no extra install.
+
+The final model is saved as `models/churn_final.joblib`. The saved file contains the data preparation (scaling and one-hot) **and** the model, and the new columns come from `src/features.py`, so serving prepares data exactly like training.
+
+### Phase 1 summary — the baseline table
+
+Same 1,409 test customers for every row, threshold 0.50.
+
+| Day | Model | Recall | Precision | F1 | ROC-AUC |
+| --- | --- | ---: | ---: | ---: | ---: |
+| 1 | Logistic Regression | 0.5588 | 0.6572 | 0.6040 | 0.8421 |
+| 2 | Random Forest | 0.7914 | 0.5258 | 0.6318 | 0.8407 |
+| 3 | Random Forest, tuned | 0.7968 | 0.5165 | 0.6267 | 0.8440 |
+| 4 | Random Forest + new features | 0.7968 | 0.5265 | 0.6340 | 0.8442 |
+
+The big jump was Day 2 (recall 0.56 → 0.79). Days 3 and 4 gave small steady gains. Every later day must beat **F1 0.6340** and **ROC-AUC 0.8442**.
+
+---
+
 ## Using the service
 
 ```python
@@ -199,7 +264,9 @@ predict(customer)
 
 - [x] **Day 1** — End-to-end churn pipeline + persisted ML service + baseline metrics
 - [x] **Day 2** — Compare Decision Tree, Random Forest and SVM; Random Forest is the champion
-- [ ] Later — feature engineering, class-imbalance handling, API layer, monitoring, deployment
+- [x] **Day 3** — Tune every model with GridSearchCV, read bias / variance, lock the champion
+- [x] **Day 4** — New features, PCA, bagging and boosting; final model and Phase 1 baseline table
+- [ ] Later — deep learning (Keras ANN), class-imbalance handling, API layer, monitoring, deployment
 
 ---
 

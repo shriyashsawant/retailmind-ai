@@ -1,0 +1,90 @@
+{
+  "trained_at": "2026-11-04T21:10:21",
+  "new_features": [
+    "tenure_group",
+    "charge_ratio",
+    "is_month_to_month",
+    "has_internet",
+    "number_of_services",
+    "pays_automatically"
+  ],
+  "feature_check": {
+    "without_new_features": {
+      "f1": 0.6322,
+      "recall": 0.804
+    },
+    "with_new_features": {
+      "f1": 0.6268,
+      "recall": 0.796
+    },
+    "they_help": false
+  },
+  "pca": {
+    "columns_before": 54,
+    "columns_after": 20,
+    "scores": {
+      "f1": 0.6254,
+      "recall": 0.7806
+    },
+    "scores_without_pca": {
+      "f1": 0.6268,
+      "recall": 0.796
+    }
+  },
+  "validation_scores": {
+    "Random Forest (bagging)": {
+      "f1": 0.6349,
+      "recall": 0.8007
+    },
+    "Gradient Boosting": {
+      "f1": 0.5853,
+      "recall": 0.5237
+    }
+  },
+  "final_model": "Random Forest (bagging)",
+  "verdict": "Random Forest (bagging) beats the Day 3 champion (F1 0.634 vs 0.6267).",
+  "test_scores": {
+    "Day 3 champion (old columns)": {
+      "accuracy": 0.748,
+      "precision": 0.5165,
+      "recall": 0.7968,
+      "f1": 0.6267,
+      "roc_auc": 0.844,
+      "decision_threshold": 0.5,
+      "confusion_matrix": {
+        "true_negative": 756,
+        "false_positive": 279,
+        "false_negative": 76,
+        "true_positive": 298
+      }
+    },
+    "Random Forest (bagging)": {
+      "accuracy": 0.7559,
+      "precision": 0.5265,
+      "recall": 0.7968,
+      "f1": 0.634,
+      "roc_auc": 0.8442,
+      "decision_threshold": 0.5,
+      "confusion_matrix": {
+        "true_negative": 767,
+        "false_positive": 268,
+        "false_negative": 76,
+        "true_positive": 298
+      }
+    },
+    "Gradient Boosting": {
+      "accuracy": 0.8077,
+      "precision": 0.6746,
+      "recall": 0.5321,
+      "f1": 0.5949,
+      "roc_auc": 0.8459,
+      "decision_threshold": 0.5,
+      "confusion_matrix": {
+        "true_negative": 939,
+        "false_positive": 96,
+        "false_negative": 175,
+        "true_positive": 199
+      }
+    }
+  }
+}
