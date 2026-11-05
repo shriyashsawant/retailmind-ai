@@ -1,4 +1,4 @@
-# RetailMind learning guide: Days 1 to 4, from the beginning
+# RetailMind learning guide: Days 1 to 5, from the beginning
 
 This guide explains what the code does and **why**, in plain English. Read it with the code open next to it. Every "file" name below is in the `src/` folder.
 
@@ -141,6 +141,44 @@ The seven ensembles in the first (uneven) test were: Random Forest, Extra Trees 
 
 ---
 
+## 4b. Day 5: a neural network (ANN), and does depth help?
+
+**What a neural network is.** Remember Logistic Regression: it adds up weighted clues and turns the total into a probability. A neural network is many of those little "weighted sum" units (called **neurons**) arranged in **layers**, where each layer feeds the next:
+
+```
+45 clue columns -> [hidden layer: 64 neurons] -> [32 neurons] -> [16 neurons] -> 1 output neuron (churn probability)
+```
+
+- **Layer:** a row of neurons. The first layer takes our prepared columns. The last layer has one neuron that gives the churn probability.
+- **Activation function:** what each neuron does to its total. We use **ReLU** in the middle (it keeps positive numbers and turns negative ones into 0, which lets the network learn curves, not just straight lines) and **sigmoid** at the end (it squeezes any number into a probability between 0 and 1).
+- **Weights:** the numbers the network learns. The deeper network has 5,569 of them; Logistic Regression has about 45.
+- **Training loop:** show the network the customers in small batches (32 at a time), measure how wrong it is (the **loss**), nudge every weight a little to be less wrong (the optimiser, here **Adam**), and repeat. One full pass over all the training customers is one **epoch**.
+
+**The MNIST warm-up.** MNIST is a classic set of handwritten digits (28 by 28 pixel pictures of 0 to 9). We flatten each picture into 784 numbers, and a network with one hidden layer learns to read digits at about 90% accuracy after only 3 epochs. It is there so you can see a network learn something it is famously good at, before we point it at churn.
+
+**Why neural networks need extra care on a table like ours.**
+1. **They want similar-sized numbers.** Our preparation step (scaling + one-hot) gives them that.
+2. **They can memorise.** With 5,569 weights and only about 5,600 training customers, a network can learn the training customers by heart. We guard against it in two ways:
+   - **Early stopping:** keep 20% of the training customers aside as a validation slice, watch the validation loss, and stop when it has not improved for 10 epochs. Then go back to the best epoch. (The deeper network stopped after 17 epochs; its best was epoch 7. After that it was memorising.)
+   - **Dropout:** during training, randomly switch off 30% of the neurons each step, so no single neuron can be relied on.
+3. **Class imbalance.** Like Day 2, we count each churner 2.77 times, or the network would learn to say "stays" for everyone.
+
+**The honest result.**
+
+| Model | Recall | Precision | F1 | ROC-AUC |
+| --- | ---: | ---: | ---: | ---: |
+| Best classical model (Bagging) | 0.773 | 0.546 | 0.640 | 0.846 |
+| Shallow ANN (1 hidden layer) | 0.783 | 0.506 | 0.615 | 0.840 |
+| Deeper ANN (3 hidden layers) | 0.746 | 0.519 | 0.612 | 0.839 |
+
+**Depth did not help.** The neural networks came out a little behind the classical champion, and the deeper network was not better than the shallow one. This is a useful lesson, not a failure. Neural networks shine when the data is raw and complicated (pictures, sound, free text), because they learn their own features. Our data is a tidy table of 19 clues that a tree model already uses well, so there is little for depth to discover. Tomorrow's data (product photos) is where networks earn their place.
+
+**Which should we use for churn?** The classical model. It scores slightly higher, trains in seconds, is smaller to deploy (no TensorFlow needed), and is easier to explain. We keep the ANN as a proven benchmark. Both can be used: `python -m src.service` and `python -m src.ann_service`.
+
+**One caution.** A neural network starts from random weights, so each training run gives slightly different results. We fix the random seed so you get the same numbers every time, but that means the numbers above are **one run**. A gap of a few hundredths between two models (like the two networks here) is within what a different seed could change, so do not read too much into it.
+
+---
+
 ## 5. The model zoo: what each model is, in one or two lines
 
 First, two families of problem:
@@ -161,6 +199,7 @@ First, two families of problem:
 | **AdaBoost** | boosting | after each tree, give the customers it got wrong more weight | simple boosting | sensitive to noisy data |
 | **Gradient Boosting** | boosting | each new tree predicts the **errors** of the trees before it | often very accurate | slower; easy to overfit if run too long |
 | **Hist Gradient Boosting** | boosting | the same, but groups numbers into bins so it is much faster | bigger data | same care as Gradient Boosting |
+| **Neural network (ANN)** | deep learning | layers of small weighted-sum neurons, trained by repeatedly nudging the weights to reduce the error | images, sound, text, very large data | needs more care on tables (scaling, early stopping, dropout); here it did not beat the tree models (see section 4b) |
 | **XGBoost** | boosting | a fast, polished, popular version of Gradient Boosting | winning data competitions; handles missing values | extra install; many settings |
 
 **Which one should you use?** There is no best model for every problem. You try several on the **same** data with the **same** fair test, and let the numbers decide, which is exactly what Days 2 to 4 did. On this data the tree-based models won by a small margin, and the simple Logistic Regression was surprisingly close.

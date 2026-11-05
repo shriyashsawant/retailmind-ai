@@ -63,9 +63,11 @@ retailmind-ai/
 │   ├── train_all.py     # the full fair comparison (12 models x 3 setups, all tuned)
 │   ├── regression_demo.py  # predict a number (monthly bill) with Linear Regression
 │   ├── train_day4.py    # Day 4: features, PCA, bagging + boosting, final model
+│   ├── train_day5.py    # Day 5: Keras neural network vs the best classical model
+│   ├── ann_service.py   # score customers with the saved neural network
 │   └── service.py       # predict() helper + command line
 ├── docs/
-│   └── LEARNING_GUIDE.md   # Days 1-4 explained in plain English
+│   └── LEARNING_GUIDE.md   # Days 1-5 explained in plain English
 ├── models/              # persisted pipeline + metrics (generated)
 ├── notebooks/
 │   └── 01_eda_and_baseline.ipynb
@@ -98,6 +100,10 @@ python -m src.train_day4
 # Full fair comparison: every model x every setup, each one tuned (about 15-30 minutes)
 python -m src.train_all
 
+# Day 5: Keras neural network vs the best classical model (needs TensorFlow, Python 3.9-3.12)
+python -m src.train_day5
+python -m src.ann_service
+
 # Bonus: predict a NUMBER (the monthly bill) with Linear Regression
 python -m src.regression_demo
 
@@ -118,6 +124,8 @@ Outputs:
 - `models/day2_comparison.json` — every model's scores and why the champion won
 - `models/churn_v3.joblib` + `models/day3_tuning.json` — the Day 3 tuned champion and what we found
 - `models/churn_final.joblib` + `models/day4_results.json` — the Day 4 final model and its results
+- `models/churn_best_overall.joblib` + `models/all_models_results.json` — the winner of the full fair comparison
+- `models/churn_ann.keras` + `models/churn_ann_prepare.joblib` + `models/day5_results.json` — the Day 5 neural network, its data-preparation step and its results
 - `reports/data_profile.json` — a few simple facts about the raw data
 
 ---
@@ -309,6 +317,42 @@ The big jump was Day 2 (recall 0.56 → 0.79). Days 3 and 4 gave only small gain
 
 ---
 
+## Day 5 — A Keras neural network (ANN) vs the classical champion
+
+**Question:** does a neural network (depth) beat the best classical model on this table of customers?
+
+`python -m src.train_day5` does five things:
+
+1. **Warm-up on MNIST** (handwritten digits): a tiny network with one hidden layer reaches about 90% accuracy on unseen digits after 3 rounds. This is only to see layers, activations and a training loop working.
+2. **Builds two churn networks** on the same customers and the same 45 prepared columns (scaled numbers + one-hot text): a **shallow** one (1 hidden layer of 16 neurons, 753 weights) and a **deeper** one (3 hidden layers of 64, 32, 16 neurons with 30% dropout, 5,569 weights). Both end in one sigmoid neuron, the churn probability.
+3. **Trains with early stopping.** It watches the loss on a validation slice (20% of the training customers) and stops after 10 rounds with no improvement, then goes back to the best round (shallow: round 15 of 25, deeper: round 7 of 17). Because only about 1 in 4 customers churns, churners are weighted 2.77 times, the same idea as `class_weight="balanced"` on Day 2.
+4. **Picks the network by validation loss**, never by the test customers (the deeper one: 0.5101 vs 0.5251).
+5. **Benchmarks it** against the Phase 1 champion (Bagging) on the same 1,409 test customers, threshold 0.50, then saves the network (`models/churn_ann.keras`) and its preparation step.
+
+| Model | Recall | Precision | F1 | ROC-AUC |
+| --- | ---: | ---: | ---: | ---: |
+| **Best classical model (Bagging, Phase 1)** | 0.7727 | 0.5463 | **0.6401** | **0.8462** |
+| Shallow ANN (1 hidden layer) | 0.7834 | 0.5060 | 0.6149 | 0.8402 |
+| Deeper ANN (3 hidden layers) — chosen by validation loss | 0.7460 | 0.5186 | 0.6118 | 0.8389 |
+
+**Did depth help? No, not on this data.** The chosen ANN's F1 is 0.028 lower than the classical model's and its ROC-AUC is 0.007 lower. The deeper network was also not better than the shallow one on the test customers (F1 0.6118 vs 0.6149), although it had a slightly lower validation loss. Treat the ANN and the classical models as roughly comparable (the ANN is a little behind), and note that the ANN scores come from one training run with one random seed, so the small gaps between the two networks are not solid evidence.
+
+### When to use which
+
+| Situation | Better choice | Why |
+| --- | --- | --- |
+| A table of customers like this one (about 7,000 rows, a mix of numbers and categories) | A classical tree-based or linear model | It matched or beat the ANN here, trains in seconds and needs no special hardware |
+| You must explain a prediction to a business user | A classical model | Logistic Regression weights and tree rules can be read. A network's weights cannot |
+| Images, audio, free text, or very large data | A neural network | It learns its own features. A table of clean columns has nothing for it to discover (Day 6 moves to product photos with a CNN) |
+| Small data | A classical model | Networks need many examples, or they memorise (that is why early stopping and dropout were needed here) |
+| Serving cost and simplicity matter | A classical model | One small `joblib` file. The ANN needs TensorFlow installed to serve |
+
+So for churn on this table the classical champion stays the production model, and the ANN is kept as a benchmark that proves the point. Both can be served: `python -m src.service` (classical) and `python -m src.ann_service` (neural network).
+
+**Environment note.** TensorFlow supports Python 3.9 to 3.12 (check the TensorFlow install page for newer versions). The code uses `import keras` (Keras 3), so it does not depend on the TensorFlow-specific API.
+
+---
+
 ## Using the service
 
 ```python
@@ -349,12 +393,13 @@ predict(customer)
 - [x] **Day 2** — Compare Decision Tree, Random Forest and SVM; Random Forest is the champion
 - [x] **Day 3** — Tune every model with GridSearchCV, read bias / variance, lock the champion
 - [x] **Day 4** — New features, PCA, bagging and boosting; final model and Phase 1 baseline table
-- [ ] Later — deep learning (Keras ANN), class-imbalance handling, API layer, monitoring, deployment
+- [x] **Day 5** — Keras ANN benchmarked against the classical champion (the classical model stays in production)
+- [ ] Later — CNN for product photos, class-imbalance handling, API layer, monitoring, deployment
 
 ---
 
 ## Tech stack
 
-`pandas` · `scikit-learn` · `joblib` — Python 3.11+
+`pandas` · `scikit-learn` · `joblib` · `xgboost` · `tensorflow` / `keras` (Day 5) — Python 3.11 or 3.12
 
 Built as part of the **RetailMind AI** 35-day incremental project.
