@@ -70,7 +70,8 @@ retailmind-ai/
 │   └── LEARNING_GUIDE.md   # Days 1-5 explained in plain English
 ├── models/              # persisted pipeline + metrics (generated)
 ├── notebooks/
-│   └── 01_eda_and_baseline.ipynb
+│   ├── 01_eda_and_baseline.ipynb
+│   └── 02_day5_keras_ann.ipynb   # Day 5: the ANN increment with saved outputs
 ├── reports/             # generated data profile
 ├── requirements.txt
 └── README.md
