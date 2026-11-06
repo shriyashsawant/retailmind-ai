@@ -4,15 +4,13 @@ from sklearn.metrics import (accuracy_score, confusion_matrix, f1_score,
 from src.config import THRESHOLD
 
 
-def evaluate(pipeline, X_test, y_test):
-    """Test a trained pipeline on customers it has never seen.
+def evaluate_probabilities(probabilities, y_test):
+    """Score churn probabilities (one number from 0 to 1 per customer).
 
-    Returns a dictionary of scores. For churn we care most about RECALL:
+    Works for any model, including the Day 5 neural network, because all it
+    needs is the list of probabilities. For churn we care most about RECALL:
     out of all customers who really left, how many did we catch?
     """
-    # churn probability for every test customer (a number from 0 to 1)
-    probabilities = pipeline.predict_proba(X_test)[:, 1]
-
     # turn the probability into a yes/no guess: 1 = will churn, 0 = will stay
     guesses = (probabilities >= THRESHOLD).astype(int)
 
@@ -32,3 +30,10 @@ def evaluate(pipeline, X_test, y_test):
             "true_positive": int(churn_caught),
         },
     }
+
+
+def evaluate(pipeline, X_test, y_test):
+    """Test a trained scikit-learn pipeline on customers it has never seen."""
+    # churn probability for every test customer (a number from 0 to 1)
+    probabilities = pipeline.predict_proba(X_test)[:, 1]
+    return evaluate_probabilities(probabilities, y_test)

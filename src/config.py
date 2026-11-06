@@ -17,6 +17,9 @@ DAY4_MODEL_FILE = "models/churn_final.joblib"            # Day 4: the final prod
 DAY4_RESULTS_FILE = "models/day4_results.json"
 BEST_MODEL_FILE = "models/churn_best_overall.joblib"     # the winner of the full fair comparison
 ALL_RESULTS_FILE = "models/all_models_results.json"
+ANN_MODEL_FILE = "models/churn_ann.keras"                # Day 5: the Keras neural network
+ANN_PREPARE_FILE = "models/churn_ann_prepare.joblib"     # Day 5: the scaling + one-hot step the ANN needs
+DAY5_RESULTS_FILE = "models/day5_results.json"
 
 # --- column names ---
 TARGET_COLUMN = "Churn"          # what we want to predict (Yes / No)
