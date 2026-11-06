@@ -20,6 +20,10 @@ ALL_RESULTS_FILE = "models/all_models_results.json"
 ANN_MODEL_FILE = "models/churn_ann.keras"                # Day 5: the Keras neural network
 ANN_PREPARE_FILE = "models/churn_ann_prepare.joblib"     # Day 5: the scaling + one-hot step the ANN needs
 DAY5_RESULTS_FILE = "models/day5_results.json"
+CNN_MODEL_FILE = "models/catalog_cnn.keras"              # Day 6: the catalog image classifier (Fashion-MNIST)
+PRODUCT_CNN_MODEL_FILE = "models/catalog_cnn_products.keras"   # Day 6: same idea on real product photos (if the data is present)
+DAY6_RESULTS_FILE = "models/day6_results.json"
+PRODUCT_IMAGES_FOLDER = "data/fashion_product_images"    # Kaggle: paramaggarwal/fashion-product-images-small (images/ + styles.csv)
 
 # --- column names ---
 TARGET_COLUMN = "Churn"          # what we want to predict (Yes / No)
