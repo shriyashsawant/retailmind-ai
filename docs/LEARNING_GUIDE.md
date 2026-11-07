@@ -1,4 +1,4 @@
-# RetailMind learning guide: Days 1 to 5, from the beginning
+# RetailMind learning guide: Days 1 to 6, from the beginning
 
 This guide explains what the code does and **why**, in plain English. Read it with the code open next to it. Every "file" name below is in the `src/` folder.
 
@@ -179,6 +179,47 @@ The seven ensembles in the first (uneven) test were: Random Forest, Extra Trees 
 
 ---
 
+## 4c. Day 6: teaching a computer to see (CNN)
+
+**The new problem.** So far every customer was one row in a table. Now the input is a **picture**, and the job is to put it into a catalog category (T-shirt, Trouser, Sneaker ...). Picture in, category out.
+
+**What a picture is to a computer.** A grey 28 by 28 picture is just a grid of 784 numbers from 0 (black) to 255 (white). We divide by 255 so they run from 0 to 1, the same "similar-sized numbers" rule as before. A colour picture has 3 grids (red, green, blue), called **channels**.
+
+**Why not just reuse Day 5's network?** A dense network could take those 784 numbers in one long row, and it does fairly well (88.2%). But flattening throws away something important: which pixels are **next to** each other. A shoe is a shape, not a list of numbers. A **CNN** (convolutional neural network) keeps the grid.
+
+**The CNN's building blocks, in the order the picture passes through them:**
+1. **Convolution layer.** Slide a small window (3 by 3 pixels, a **filter**) across the picture. Each filter learns to spot one tiny pattern, like an edge going up and to the right. The network learns the filters itself during training. 32 filters in the first layer means 32 different pattern-spotters.
+2. **ReLU.** Same as Day 5: keep positive numbers, turn negatives into 0.
+3. **Pooling layer.** Look at each 2 by 2 block and keep only the strongest signal. The picture gets half the size, so the next layer sees a wider area, and the network does not care if a pattern moves by a pixel.
+4. **Repeat.** The second convolution (64 filters) combines the first layer's edges into bigger shapes: a sleeve, a heel, a strap.
+5. **Flatten.** Now (and only now) turn the small feature grids into one row of numbers.
+6. **Dropout.** Switch off 40% of the neurons randomly during training so the network cannot memorise the training pictures. Same idea as Day 5.
+7. **Dense layers.** Combine the shapes into a decision. The last layer has 10 neurons with **softmax**, which turns them into 10 probabilities that add up to 1, one per category.
+
+**Augmentation.** To show the network more variety than the pictures we have, we randomly flip, slightly turn and zoom each picture **while training only**. It is like showing the same shirt from slightly different angles. It helps most when real photos are messy (different angles, lighting, framing).
+
+**Results (Fashion-MNIST, 10,000 test pictures the model never saw):**
+
+| Model | Test accuracy |
+| --- | ---: |
+| Dense network (flattened pixels) | 0.882 |
+| **CNN** | **0.916** |
+| CNN with augmentation | 0.903 |
+
+- **The CNN won**, by 3.4 points, with about the same number of weights. Keeping the picture's grid is what mattered. This is the opposite of Day 5: on a table of customers the neural network did not win; on pictures it does.
+- **Augmentation did not help here.** Fashion-MNIST pictures are already neat (centred, same size, same lighting), so random flips and turns mostly add noise. We will keep augmentation for real product photos, where pictures are messier, but that is a prediction to test, not something we have shown yet.
+- **Why we raised the training limit.** The first try stopped every network at 15 rounds, and both CNNs had their best score at round 15, the very last one. They were still improving, so the comparison was unfair, especially to the slower-learning augmented network. We raised the limit to 40 rounds and let early stopping decide. Lesson: if your best round is the last one, your limit is too low.
+
+**The confusion matrix.** Accuracy says how often we are right, but not **where** we are wrong. A confusion matrix is a table: each row is the **real** category and each column is what the model **guessed**. The diagonal is correct answers. Everything off the diagonal is a mix-up.
+
+For our CNN, Trouser, Bag, Sandal and Ankle boot are almost always right (96% to 99%). **Shirt is the weak spot at 73%**: it is called T-shirt/top 123 times, and Pullover or Coat 58 times each. At 28 by 28 pixels, a shirt, a T-shirt and a pullover really do look alike. A model that is 91.6% accurate overall can still be only 73% right on one category, which matters if the catalog depends on that category.
+
+**What we have NOT done.** The real catalog photos (Kaggle "Fashion Product Images") need a Kaggle account to download, so we have not trained on them. The loading code is written and was tested on made-up pictures to prove it runs, but we have **no accuracy for real photos**. Fashion-MNIST was only the quick prototype to test the design.
+
+**Try it:** `python -m src.train_day6`, then `python -m src.catalog_service` to see the model tag 8 pictures.
+
+---
+
 ## 5. The model zoo: what each model is, in one or two lines
 
 First, two families of problem:
@@ -200,6 +241,7 @@ First, two families of problem:
 | **Gradient Boosting** | boosting | each new tree predicts the **errors** of the trees before it | often very accurate | slower; easy to overfit if run too long |
 | **Hist Gradient Boosting** | boosting | the same, but groups numbers into bins so it is much faster | bigger data | same care as Gradient Boosting |
 | **Neural network (ANN)** | deep learning | layers of small weighted-sum neurons, trained by repeatedly nudging the weights to reduce the error | images, sound, text, very large data | needs more care on tables (scaling, early stopping, dropout); here it did not beat the tree models (see section 4b) |
+| **CNN (convolutional neural network)** | deep learning | slides small learned filters over a picture to find edges, then shapes, keeping which pixels are neighbours | images | needs many pictures; real photos need augmentation; see section 4c |
 | **XGBoost** | boosting | a fast, polished, popular version of Gradient Boosting | winning data competitions; handles missing values | extra install; many settings |
 
 **Which one should you use?** There is no best model for every problem. You try several on the **same** data with the **same** fair test, and let the numbers decide, which is exactly what Days 2 to 4 did. On this data the tree-based models won by a small margin, and the simple Logistic Regression was surprisingly close.

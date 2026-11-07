@@ -65,13 +65,16 @@ retailmind-ai/
 │   ├── train_day4.py    # Day 4: features, PCA, bagging + boosting, final model
 │   ├── train_day5.py    # Day 5: Keras neural network vs the best classical model
 │   ├── ann_service.py   # score customers with the saved neural network
+│   ├── train_day6.py    # Day 6: CNN that classifies product images (Fashion-MNIST + real photos if present)
+│   ├── catalog_service.py   # tag pictures with the saved image classifier
 │   └── service.py       # predict() helper + command line
 ├── docs/
 │   └── LEARNING_GUIDE.md   # Days 1-5 explained in plain English
 ├── models/              # persisted pipeline + metrics (generated)
 ├── notebooks/
 │   ├── 01_eda_and_baseline.ipynb
-│   └── 02_day5_keras_ann.ipynb   # Day 5: the ANN increment with saved outputs
+│   ├── 02_day5_keras_ann.ipynb   # Day 5: the ANN increment with saved outputs
+│   └── 03_day6_cnn_catalog.ipynb # Day 6: the CNN increment with saved outputs
 ├── reports/             # generated data profile
 ├── requirements.txt
 └── README.md
@@ -105,6 +108,10 @@ python -m src.train_all
 python -m src.train_day5
 python -m src.ann_service
 
+# Day 6: CNN that classifies product images (about 8 minutes on a laptop CPU)
+python -m src.train_day6
+python -m src.catalog_service
+
 # Bonus: predict a NUMBER (the monthly bill) with Linear Regression
 python -m src.regression_demo
 
@@ -127,6 +134,7 @@ Outputs:
 - `models/churn_final.joblib` + `models/day4_results.json` — the Day 4 final model and its results
 - `models/churn_best_overall.joblib` + `models/all_models_results.json` — the winner of the full fair comparison
 - `models/churn_ann.keras` + `models/churn_ann_prepare.joblib` + `models/day5_results.json` — the Day 5 neural network, its data-preparation step and its results
+- `models/catalog_cnn.keras` + `models/day6_results.json` — the Day 6 image classifier and its results
 - `reports/data_profile.json` — a few simple facts about the raw data
 
 ---
@@ -354,6 +362,35 @@ So for churn on this table the classical champion stays the production model, an
 
 ---
 
+## Day 6 — A CNN that classifies product images
+
+**Question:** can we tag catalog pictures automatically, and does a CNN beat a plain dense network on images?
+
+`python -m src.train_day6` does this:
+
+1. **Prototype on Fashion-MNIST** (60,000 training and 10,000 test pictures, 28×28 grey, 10 categories; built into Keras). Three designs are trained on the same pictures: a **dense** network (flattened pixels), a **CNN** (conv → pool → conv → pool → dropout → dense) and the same CNN with **augmentation** (random flips, small turns and zooms, applied only while training).
+2. **Early stopping** on validation loss (up to 40 rounds, stop after 5 without improvement). The design is chosen by validation loss, never by the test pictures.
+3. **Confusion matrix** on the 10,000 test pictures for the chosen model.
+4. **Saves the catalog classifier** as `models/catalog_cnn.keras`, the first computer-vision module. `python -m src.catalog_service` tags sample pictures with it.
+5. **Real product photos (optional).** If the Kaggle *Fashion Product Images* are in `data/fashion_product_images/` (`styles.csv` + `images/`), the same CNN design is trained on them (pictures loaded from disk, resized to 64×64, 10 most common article types, augmentation on).
+
+| Model | Weights | Rounds (best) | Validation loss | Test accuracy |
+| --- | ---: | ---: | ---: | ---: |
+| Dense network (flattened pixels) | 101,770 | 21 (16) | 0.3216 | 0.8824 |
+| **CNN, no augmentation** — chosen | 121,930 | 28 (23) | **0.2175** | **0.9163** |
+| CNN with augmentation | 121,930 | 40 (36) | 0.2541 | 0.9027 |
+
+**The CNN beats the dense network by 3.4 points of accuracy** with a similar number of weights, because convolution filters look at neighbouring pixels (edges, then shapes) instead of treating the picture as a flat list. **Augmentation did not help on Fashion-MNIST** (0.9027 vs 0.9163). These pictures are already centred and the same size, so random flips and turns mostly add noise, and the augmented network used all 40 allowed rounds, so it was still creeping up. Augmentation is kept for the real-photo pipeline, where pictures are messier.
+
+**Which categories are confused?** Recall per category for the chosen CNN: Trouser 0.979, Bag 0.981, Sandal 0.988 and Ankle boot 0.963 are almost always right, while **Shirt is weakest at 0.731**, then Coat 0.855 and T-shirt/top 0.878. The biggest mix-ups are Shirt called T-shirt/top (123 times), T-shirt/top called Shirt (81), Coat called Pullover (66) and Shirt called Pullover or Coat (58 each). These are tops that look alike at 28×28.
+
+**Honest limits.**
+- The real *Fashion Product Images* (Kaggle, needs an account to download) were **not** available, so **no real-photo accuracy is reported**. The loader and the real-photo CNN code were tested only on synthetic pictures to prove the code runs on the real folder layout (a broken `styles.csv` row and a missing photo are skipped).
+- Each model was trained once with a fixed seed, so gaps of about 0.01 (for example CNN vs augmented CNN) are within what a different seed could change.
+- Like Day 5, this needs TensorFlow (Python 3.9–3.12) and `pillow`.
+
+---
+
 ## Using the service
 
 ```python
@@ -395,7 +432,8 @@ predict(customer)
 - [x] **Day 3** — Tune every model with GridSearchCV, read bias / variance, lock the champion
 - [x] **Day 4** — New features, PCA, bagging and boosting; final model and Phase 1 baseline table
 - [x] **Day 5** — Keras ANN benchmarked against the classical champion (the classical model stays in production)
-- [ ] Later — CNN for product photos, class-imbalance handling, API layer, monitoring, deployment
+- [x] **Day 6** — CNN image classifier for catalog photos (Fashion-MNIST prototype; real product photos supported but not yet run)
+- [ ] Later — transfer learning and object detection, class-imbalance handling, API layer, monitoring, deployment
 
 ---
 
