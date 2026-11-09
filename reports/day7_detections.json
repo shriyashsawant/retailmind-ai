@@ -1,0 +1,56 @@
+{
+  "image": "Ultralytics sample bus.jpg (not a catalog image)",
+  "model": "yolov8n.pt (COCO)",
+  "objects": [
+    {
+      "label": "bus",
+      "confidence": 0.873,
+      "box": [
+        23.0,
+        231.1,
+        804.9,
+        756.8
+      ]
+    },
+    {
+      "label": "person",
+      "confidence": 0.865,
+      "box": [
+        48.5,
+        398.6,
+        245.4,
+        902.8
+      ]
+    },
+    {
+      "label": "person",
+      "confidence": 0.854,
+      "box": [
+        669.4,
+        392.9,
+        809.7,
+        877.1
+      ]
+    },
+    {
+      "label": "person",
+      "confidence": 0.825,
+      "box": [
+        221.6,
+        405.8,
+        345.0,
+        857.6
+      ]
+    },
+    {
+      "label": "person",
+      "confidence": 0.267,
+      "box": [
+        0.0,
+        550.5,
+        62.9,
+        873.5
+      ]
+    }
+  ]
+}
