@@ -23,7 +23,11 @@ DAY5_RESULTS_FILE = "models/day5_results.json"
 CNN_MODEL_FILE = "models/catalog_cnn.keras"              # Day 6: the catalog image classifier (Fashion-MNIST)
 PRODUCT_CNN_MODEL_FILE = "models/catalog_cnn_products.keras"   # Day 6: same idea on real product photos (if the data is present)
 DAY6_RESULTS_FILE = "models/day6_results.json"
-PRODUCT_IMAGES_FOLDER = "data/fashion_product_images"    # Kaggle: paramaggarwal/fashion-product-images-small (images/ + styles.csv)
+RESNET_MODEL_FILE = "models/catalog_resnet50.keras"      # Day 7: transfer-learning classifier (large, not committed)
+DAY7_RESULTS_FILE = "models/day7_results.json"
+DETECTIONS_FILE = "reports/day7_detections.json"         # Day 7: what YOLO found in the sample image
+DETECTIONS_IMAGE = "reports/day7_detections.jpg"         # Day 7: the sample image with boxes drawn on it
+PRODUCT_IMAGES_FOLDER ="data/fashion_product_images"    # Kaggle: paramaggarwal/fashion-product-images-small (images/ + styles.csv)
 
 # --- column names ---
 TARGET_COLUMN = "Churn"          # what we want to predict (Yes / No)

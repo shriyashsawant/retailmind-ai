@@ -414,6 +414,32 @@ predict(customer)
 
 ---
 
+## Day 7 — Transfer learning and object detection
+
+```bash
+# Transfer learning vs the Day 6 CNN (about 6 minutes on a laptop CPU; downloads ResNet50 weights, ~100 MB, once)
+python -m src.train_day7
+
+# Detection with a pretrained YOLO model (needs: pip install ultralytics, which also installs PyTorch)
+python -m src.detector path/to/picture.jpg --save reports/boxes.jpg
+```
+
+**Transfer learning.** ResNet50 (learned on ImageNet) replaces the from-scratch CNN. First the base is frozen and only a new head is trained; then the top 20 layers are unfrozen and trained gently. Every model gets the **same 10,000 training pictures** and is scored on the **same 10,000 test pictures**.
+
+| Model | Trainable weights | Test accuracy | Seconds |
+| --- | ---: | ---: | ---: |
+| Day 6 CNN, from scratch | 121,930 | **0.8774** | 18 |
+| ResNet50, frozen (feature extraction) | 20,490 | 0.8266 | 144 |
+| ResNet50, fine-tuned (top 20 layers) | 8,939,530 | 0.8656 | 175 |
+
+For reference, the Day 6 CNN trained on all 60,000 pictures scores 0.9163.
+
+**Honest reading: transfer learning did not win here.** The small from-scratch CNN beat ResNet50 on this data. Likely reasons (not tested): Fashion-MNIST pictures are tiny 28x28 greyscale, so enlarging them to 64x64 and copying the grey channel three times gives ResNet50 very little of the detail ImageNet features expect, while the Day 6 CNN was built for exactly this picture size. Fine-tuning helped (+0.039 over frozen) but did not close the gap. Single run, single seed; gaps of about 0.01 are noise. Transfer learning would be expected to pay off on real, full-size catalog photos (the Kaggle Fashion Product Images set), which were **not run** because that dataset needs a Kaggle account.
+
+**Detection.** `src/detector.py` runs pretrained YOLOv8n (COCO, 80 everyday object types) and returns each object's label, confidence and box. Verified on the public Ultralytics sample picture (4 people and 1 bus found; see `reports/day7_detections.json` and `.jpg`). That sample is **not** a catalog image, and YOLO's COCO classes contain no fashion-specific categories, so on catalog photos it would find generic things like "person" or "handbag", not dress or shirt. Where detection helps: catalog QA (is the product present and centred?), pictures with several products, and shelf analytics. To locate specific fashion items it would need to be fine-tuned on a labelled fashion detection set, which is the next step. `ultralytics` is kept out of `requirements.txt` because it pulls in PyTorch; install it only if you use the detector.
+
+---
+
 ## Design notes
 
 - **Simple code.** Short functions, plain loops and comments that explain *why*, so a beginner can read every file top to bottom.
@@ -433,7 +459,8 @@ predict(customer)
 - [x] **Day 4** — New features, PCA, bagging and boosting; final model and Phase 1 baseline table
 - [x] **Day 5** — Keras ANN benchmarked against the classical champion (the classical model stays in production)
 - [x] **Day 6** — CNN image classifier for catalog photos (Fashion-MNIST prototype; real product photos supported but not yet run)
-- [ ] Later — transfer learning and object detection, class-imbalance handling, API layer, monitoring, deployment
+- [x] **Day 7** — ResNet50 transfer learning compared with the Day 6 CNN (the CNN won on Fashion-MNIST), plus a YOLO detector module
+- [ ] Later — class-imbalance handling, API layer, monitoring, deployment
 
 ---
 

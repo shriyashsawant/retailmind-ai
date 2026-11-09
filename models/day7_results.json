@@ -1,0 +1,65 @@
+{
+  "train_pictures": 10000,
+  "test_pictures": 10000,
+  "models": {
+    "Day 6 CNN (from scratch)": {
+      "weights": 121930,
+      "trainable_weights": 121930,
+      "test_accuracy": 0.8774,
+      "seconds": 18
+    },
+    "ResNet50, frozen (feature extraction)": {
+      "weights": 23608202,
+      "trainable_weights": 20490,
+      "test_accuracy": 0.8266,
+      "seconds": 144
+    },
+    "ResNet50, fine-tuned (top 20 layers)": {
+      "weights": 23608202,
+      "trainable_weights": 8939530,
+      "test_accuracy": 0.8656,
+      "seconds": 175
+    }
+  },
+  "fine_tuned_per_class_recall": {
+    "T-shirt/top": 0.787,
+    "Trouser": 0.96,
+    "Pullover": 0.806,
+    "Dress": 0.823,
+    "Coat": 0.849,
+    "Sandal": 0.933,
+    "Shirt": 0.621,
+    "Sneaker": 0.953,
+    "Bag": 0.971,
+    "Ankle boot": 0.953
+  },
+  "fine_tuned_top_mix_ups": [
+    {
+      "times": 146,
+      "real": "Shirt",
+      "guessed_as": "Coat"
+    },
+    {
+      "times": 121,
+      "real": "Shirt",
+      "guessed_as": "T-shirt/top"
+    },
+    {
+      "times": 102,
+      "real": "Pullover",
+      "guessed_as": "Coat"
+    },
+    {
+      "times": 101,
+      "real": "T-shirt/top",
+      "guessed_as": "Shirt"
+    },
+    {
+      "times": 68,
+      "real": "Pullover",
+      "guessed_as": "Shirt"
+    }
+  ],
+  "day6_cnn_on_all_60000_pictures": 0.9163,
+  "best_model": "Day 6 CNN (from scratch)"
+}
