@@ -39,16 +39,10 @@ def segment_plain_background(picture):
 def fill_enclosed_holes(mask):
     """Dark patches completely surrounded by the product (a black logo, a button) are part of it.
     Background that touches the picture's edge (the gap between trouser legs) is left alone."""
-    outside = mask.copy()
-    flood_mask = np.zeros((mask.shape[0] + 2, mask.shape[1] + 2), np.uint8)    # OpenCV wants a border of 1 pixel
-    height, width = mask.shape
-    edge_points = [(x, 0) for x in range(width)] + [(x, height - 1) for x in range(width)] \
-        + [(0, y) for y in range(height)] + [(width - 1, y) for y in range(height)]
-    for x, y in edge_points:                                          # start from EVERY background pixel on the border,
-        if outside[y, x] == 0:                                        # not just the corners (a gap can open onto the edge)
-            cv2.floodFill(outside, flood_mask, (x, y), 255)           # paint everything reachable from the edge
-    enclosed = cv2.bitwise_not(outside)                               # whatever was NOT reached is enclosed
-    return cv2.bitwise_or(mask, enclosed)
+    outlines, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)   # the outer edge of each blob
+    filled = np.zeros_like(mask)
+    cv2.drawContours(filled, outlines, -1, 255, thickness=cv2.FILLED)                    # colour in everything inside it
+    return filled
 
 
 def segment_with_box(photo, box):
