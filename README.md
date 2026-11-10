@@ -440,6 +440,45 @@ For reference, the Day 6 CNN trained on all 60,000 pictures scores 0.9163.
 
 ---
 
+## Day 8 — Background removal, Grad-CAM and the packaged CV module
+
+```bash
+pip install -r requirements.txt            # now includes OpenCV
+python -m src.run_day8                     # measure + save reports/day8_catalog_grid.png and models/day8_results.json
+python -m src.run_day8 --photo shoe.jpg    # also cut a product out of a colour photo (uses the saved detector box)
+```
+
+```python
+from src.vision import CatalogVision
+vision = CatalogVision()
+result = vision.analyze(picture)           # grey 28x28, values 0-255
+result["category"], result["confidence"], result["product_share"], result["heat_on_product"]
+result["clean"]                            # the product on a white background
+result["explanation"]                      # the Grad-CAM overlay for the catalog team
+```
+
+`src/vision.py` packages classification (Day 6 CNN), detection (Day 7 YOLO, optional) and the new segmentation (`src/segmentation.py`, OpenCV) and explanation (`src/explain.py`, Grad-CAM). `reports/day8_catalog_grid.png` shows, for 8 test pictures: original, mask, product on white, Grad-CAM.
+
+**Segmentation method.** OpenCV, no model to download. Fashion-MNIST products sit on a flat background, so a pixel counts as product when it differs from the background colour (read from the picture edge) by more than 8 grey levels; enclosed holes are filled, background touching the edge (the gap between trouser legs) is kept. For colour photos, GrabCut runs inside a box from the detector. A learned segmenter (U-Net, Mask R-CNN) was **not** built, because it needs labelled masks we do not have.
+
+| Check (1,000 test pictures) | Result |
+| --- | ---: |
+| Classifier accuracy, original pictures | 0.914 |
+| Accuracy after background removal (put back on black) | 0.911 |
+| Same answer before and after cleaning | 99.6% |
+| Accuracy on the cleaned picture **on a white background** | 0.340 |
+| Product's share of the picture (mean) | 0.483 |
+| Grad-CAM heat that falls on the product (mean) | 0.468 |
+
+**Honest reading**
+- Segmentation here is an easy case. These pictures already have a flat black background, so "background removal" mostly confirms what is there. It is **not** evidence that it would work on real, messy catalog photos, which were not available (the Kaggle dataset needs an account). On the one colour photo tried (a public Ultralytics sample, not a product), GrabCut kept the bus and the people inside the box and removed the sky, but it cannot separate objects that overlap.
+- My first version used Otsu thresholding and lost dark products such as coats (accuracy fell to 0.880), and a blur-and-close step filled the gap between trouser legs. Both are fixed; the threshold of 8 was chosen on **training** pictures (anything from 3 to 15 kept accuracy), not the test set.
+- **Classify first, composite last.** The CNN was trained on black backgrounds, so on a white background it falls to 0.340. Use the white-background version only for publishing, never as classifier input.
+- **Grad-CAM does not show the model "looking at the product".** The share of heat on the product (0.468) is about the same as the product's share of the picture (0.483), and it is similar for right (0.466) and wrong (0.483) answers. At this size the last convolution map is only 11x11, so the heat is coarse; for trousers it lights up the space beside the legs, i.e. the model uses shape and outline. So the heatmap shows *where the evidence is*, and a catalog reviewer should not read it as proof that a decision is right.
+- One run, the first 1,000 test pictures. Differences of a few pictures (0.911 vs 0.914) are noise.
+
+---
+
 ## Design notes
 
 - **Simple code.** Short functions, plain loops and comments that explain *why*, so a beginner can read every file top to bottom.
@@ -460,6 +499,7 @@ For reference, the Day 6 CNN trained on all 60,000 pictures scores 0.9163.
 - [x] **Day 5** — Keras ANN benchmarked against the classical champion (the classical model stays in production)
 - [x] **Day 6** — CNN image classifier for catalog photos (Fashion-MNIST prototype; real product photos supported but not yet run)
 - [x] **Day 7** — ResNet50 transfer learning compared with the Day 6 CNN (the CNN won on Fashion-MNIST), plus a YOLO detector module
+- [x] **Day 8** — OpenCV background removal, Grad-CAM explanations and one packaged CV module (closes Phase 2)
 - [ ] Later — class-imbalance handling, API layer, monitoring, deployment
 
 ---
