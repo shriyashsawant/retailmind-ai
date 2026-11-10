@@ -220,6 +220,47 @@ For our CNN, Trouser, Bag, Sandal and Ankle boot are almost always right (96% to
 
 ---
 
+## 4d. Day 7: borrowing a trained network (transfer learning) and finding objects (detection)
+
+**Transfer learning.** Training a CNN from scratch means the network must discover what edges and shapes are. **ResNet50** has already done that on over a million everyday photos (ImageNet). We keep its learned filters and add a small new "head" that picks our 10 categories.
+
+1. **Frozen.** Switch off learning in ResNet50 and train only the new head (20,490 weights). This is **feature extraction**.
+2. **Fine-tune.** Switch on the top 20 layers and train them gently (a small learning rate), so we adjust the borrowed filters a little without wrecking them.
+
+**To make it fair:** all models used the same 10,000 training pictures and the same 10,000 test pictures. ResNet50 wants bigger, 3-colour pictures, so our grey 28 by 28 pictures were enlarged to 64 by 64 and the grey channel was copied three times.
+
+| Model | Test accuracy |
+| --- | ---: |
+| Day 6 CNN, from scratch | **0.877** |
+| ResNet50, frozen | 0.827 |
+| ResNet50, fine-tuned | 0.866 |
+
+**The borrowed network lost.** Likely reason (not tested): tiny grey pictures give ResNet50 little of the detail it learned on large colour photos, and our small CNN was built for exactly this picture size. Fine-tuning helped (+0.039) but did not catch up. Transfer learning usually pays off on **real, large photos**, which we have not run.
+
+**Detection.** Classification says what a picture is. **Detection** says what is in it **and where**, drawing a box round each object. We use a pretrained **YOLO** model. It knows 80 everyday things (person, bus, bottle ...), **not fashion items**, so on catalog photos it would find "person" or "handbag", not "dress". It is useful for checking a photo has a product in it, or counting products on a shelf. Verified only on a public sample photo (4 people and a bus found).
+
+**Try it:** `python -m src.train_day7` (about 6 minutes), and `pip install ultralytics` then `python -m src.detector photo.jpg`.
+
+---
+
+## 4e. Day 8: cutting out the product and explaining the decision
+
+**Background removal (segmentation).** Make a **mask**: a picture where white means "product" and black means "background". Then paste only the product pixels onto a clean white background. Our pictures have a flat black background, so we call a pixel "product" if it differs from the edge colour by more than 8 shades of grey. For colour photos, OpenCV's **GrabCut** works out the product inside a box we give it.
+
+**What went wrong first.** An automatic threshold (Otsu) lost dark coats, so accuracy dropped from 0.914 to 0.880. A smoothing step also filled the gap between trouser legs. Fixing both brought accuracy back to 0.911. Lesson: look at the pictures, not just the numbers.
+
+**Classify first, composite last.** The CNN learned on black backgrounds. On a white background its accuracy falls to 0.340. So the white version is only for publishing.
+
+**Grad-CAM.** A heatmap showing which parts of the picture pushed the CNN toward its answer: take the last convolution layer's feature maps, weight each by how much it raised the chosen category's score, add them up, and stretch to the picture size. Bright means important.
+
+**What we found.** The heat on the product (0.468) is about the same as the product's share of the picture (0.483). So the heatmap does **not** prove the model looks at the product. For trousers it lights up the space beside the legs: the model uses shape and outline. Read a Grad-CAM as "where the evidence is", never as proof the answer is right.
+
+**One module.** `src/vision.py` wraps it all: classify, mask, clean picture, heatmap in one call.
+
+**Try it:** `python -m src.run_day8`.
+
+---
+
 ## 5. The model zoo: what each model is, in one or two lines
 
 First, two families of problem:

@@ -67,15 +67,23 @@ retailmind-ai/
 │   ├── ann_service.py   # score customers with the saved neural network
 │   ├── train_day6.py    # Day 6: CNN that classifies product images (Fashion-MNIST + real photos if present)
 │   ├── catalog_service.py   # tag pictures with the saved image classifier
+│   ├── train_day7.py    # Day 7: pretrained ResNet50 vs the Day 6 CNN
+│   ├── detector.py      # Day 7: find objects and their boxes with YOLO (optional: needs ultralytics)
+│   ├── segmentation.py  # Day 8: cut the product out of its picture (OpenCV)
+│   ├── explain.py       # Day 8: Grad-CAM heatmaps
+│   ├── vision.py        # Day 8: one object that packages classify + segment + explain (+ detect)
+│   ├── run_day8.py      # Day 8: measure the above and save pictures
 │   └── service.py       # predict() helper + command line
 ├── docs/
-│   └── LEARNING_GUIDE.md   # Days 1-5 explained in plain English
+│   └── LEARNING_GUIDE.md   # Days 1-8 explained in plain English
 ├── models/              # persisted pipeline + metrics (generated)
 ├── notebooks/
 │   ├── 01_eda_and_baseline.ipynb
 │   ├── 02_day5_keras_ann.ipynb   # Day 5: the ANN increment with saved outputs
-│   └── 03_day6_cnn_catalog.ipynb # Day 6: the CNN increment with saved outputs
-├── reports/             # generated data profile
+│   ├── 03_day6_cnn_catalog.ipynb # Day 6: the CNN increment with saved outputs
+│   ├── 04_day7_transfer_detection.ipynb   # Day 7: transfer learning + detection results
+│   └── 05_day8_segmentation_gradcam.ipynb # Day 8: background removal + Grad-CAM, run live
+├── reports/             # generated data profile, Day 7 detections, Day 8 pictures
 ├── requirements.txt
 └── README.md
 ```
