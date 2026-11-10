@@ -1,0 +1,18 @@
+{
+  "pictures_checked": 1000,
+  "accuracy_original": 0.914,
+  "accuracy_background_removed_on_black": 0.911,
+  "accuracy_background_removed_on_white": 0.34,
+  "same_answer_after_cleaning_on_black": 0.996,
+  "mask_share_of_picture_mean": 0.483,
+  "empty_masks": 0,
+  "heat_on_product_mean": 0.468,
+  "heat_on_product_when_right": 0.466,
+  "heat_on_product_when_wrong": 0.483,
+  "wrong_answers": 86,
+  "photo_demo": {
+    "box_label": "bus",
+    "output": "reports/day8_photo_cutout.jpg",
+    "note": "GrabCut inside the saved YOLO box on the Ultralytics sample photo; not a catalog image"
+  }
+}
