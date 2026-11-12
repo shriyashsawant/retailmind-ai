@@ -73,6 +73,10 @@ retailmind-ai/
 │   ├── explain.py       # Day 8: Grad-CAM heatmaps
 │   ├── vision.py        # Day 8: one object that packages classify + segment + explain (+ detect)
 │   ├── run_day8.py      # Day 8: measure the above and save pictures
+│   ├── demand_data.py   # Days 9-10: daily store sales (real Rossmann file or made-up) cut into windows
+│   ├── train_day9.py    # Day 9: LSTM that forecasts tomorrow's sales, vs simple baselines
+│   ├── check_day9_seeds.py    # Day 9: repeat the training from 5 random starts to see how much scores swing
+│   ├── demand_service.py   # the demand module: forecast_next_day() (Day 9)
 │   └── service.py       # predict() helper + command line
 ├── docs/
 │   └── LEARNING_GUIDE.md   # Days 1-8 explained in plain English
@@ -82,7 +86,8 @@ retailmind-ai/
 │   ├── 02_day5_keras_ann.ipynb   # Day 5: the ANN increment with saved outputs
 │   ├── 03_day6_cnn_catalog.ipynb # Day 6: the CNN increment with saved outputs
 │   ├── 04_day7_transfer_detection.ipynb   # Day 7: transfer learning + detection results
-│   └── 05_day8_segmentation_gradcam.ipynb # Day 8: background removal + Grad-CAM, run live
+│   ├── 05_day8_segmentation_gradcam.ipynb # Day 8: background removal + Grad-CAM, run live
+│   └── 06_day9_lstm_demand.ipynb          # Day 9: LSTM demand forecast, results and the demand module
 ├── reports/             # generated data profile, Day 7 detections, Day 8 pictures
 ├── requirements.txt
 └── README.md
@@ -487,6 +492,39 @@ result["explanation"]                      # the Grad-CAM overlay for the catalo
 
 ---
 
+## Day 9 — An LSTM that forecasts demand
+
+```bash
+python -m src.train_day9        # about 1 minute on a laptop CPU
+python -m src.demand_service    # tomorrow's forecast for every store
+```
+
+```python
+from src.demand_service import forecast_next_day
+forecast_next_day(last_28_days_of_sales)      # one store's last 28 days of sales -> tomorrow's sales
+```
+
+**The task.** Read a store's last 28 days of sales and predict the next day. The sales are cut into windows (28 days in, 1 day out) and split **by time**: the oldest days train the model, the 8 weeks before the end validate it, and the **latest 8 weeks** test it. Each window is scaled by its own average and spread, so one model serves small and big stores.
+
+**Important: the data is made up.** The real Kaggle *Rossmann Store Sales* file needs a Kaggle account, so it was not used. `src/demand_data.py` loads `data/raw/rossmann/train.csv` if you put it there; otherwise it generates **made-up** daily sales for 8 stores (store size, a weekly pattern with Sundays closed, a yearly wave, slow growth, a promotion on 5 days of every 2 weeks, and noise). These scores show that the code works. They are **not** evidence about real demand.
+
+| Forecast of the next day (448 test windows) | MAE (sales units) | RMSE |
+| --- | ---: | ---: |
+| Same as yesterday | 1991.1 | 3072.3 |
+| Same as the same weekday last week | 665.2 | 853.1 |
+| Same as the same weekday 2 weeks ago | 278.2 | 386.1 |
+| **LSTM** (4,385 weights), one run (seed 42) | 248.3 | 329.9 |
+| **LSTM**, mean of 5 random starts | **271.3** (std 30.5) | |
+
+**Honest reading**
+- **One run said the LSTM beats the best baseline by 11% (248.3 vs 278.2). Five random starts say it roughly ties it.** A neural network starts from random numbers, so repeating the training from 5 different starts (`python -m src.check_day9_seeds`) gave 238.3, 248.9, 256.4, 292.9 and 319.9: mean 271.3, spread (std) 30.5. That is only about 2.5% better than the baseline's 278.2, and the LSTM beat the baseline in just 3 of the 5 runs. The 248.3 in the table was a favourable start.
+- The fair baseline is "2 weeks ago", because the made-up promotions repeat every 2 weeks; comparing only with "yesterday" or "last week" would have made the LSTM look far better than it is.
+- The first training run stopped at the 40-round limit, so the limit was too low (the same lesson as Day 6). With a limit of 150, early stopping ended it at 69 rounds.
+- The data was made up with a clean repeating pattern, so a model that finds it should do well. Real Rossmann sales (holidays, school breaks, competitors opening) are messier and may give different results.
+- MAE is used because many days have 0 sales (closed), which breaks percentage errors. The baselines do not learn, so they give the same score every time.
+
+---
+
 ## Design notes
 
 - **Simple code.** Short functions, plain loops and comments that explain *why*, so a beginner can read every file top to bottom.
@@ -508,6 +546,7 @@ result["explanation"]                      # the Grad-CAM overlay for the catalo
 - [x] **Day 6** — CNN image classifier for catalog photos (Fashion-MNIST prototype; real product photos supported but not yet run)
 - [x] **Day 7** — ResNet50 transfer learning compared with the Day 6 CNN (the CNN won on Fashion-MNIST), plus a YOLO detector module
 - [x] **Day 8** — OpenCV background removal, Grad-CAM explanations and one packaged CV module (closes Phase 2)
+- [x] **Day 9** — LSTM demand forecast (next day) on made-up Rossmann-style sales; over 5 random starts it roughly ties the best simple baseline
 - [ ] Later — class-imbalance handling, API layer, monitoring, deployment
 
 ---

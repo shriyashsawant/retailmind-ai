@@ -261,6 +261,37 @@ For our CNN, Trouser, Bag, Sandal and Ankle boot are almost always right (96% to
 
 ---
 
+## 4f. Day 9: forecasting with an LSTM
+
+**The new problem.** A shop wants to know how much it will sell tomorrow, so it orders the right amount of stock. The input is a **time series**: one sales number per day, in order. Order matters, because "Saturday is busy" only makes sense if you know which day came before.
+
+**Windows.** A model learns from many short examples cut out of the long history. Each example is a **window**: the last 28 days (the question) and the next day (the answer). Slide the window one day at a time and you get thousands of examples.
+
+**Split by time, never at random.** Train on the oldest days, validate on the next 8 weeks, test on the **latest** 8 weeks. A random split would let the model see the future when learning the past, which makes scores look better than they are.
+
+**Scaling.** Each window is shifted and stretched by its own average and spread, so a small shop and a big shop look alike to the model. The forecast is then turned back into real sales.
+
+**LSTM.** A layer that reads the days **in order** and keeps a memory of what it has seen. It can learn "Sundays are closed", "Saturdays are busy" and "sales rise during a promotion" without us telling it.
+
+**Baselines first.** Before trusting a model, compare it with something with no learning in it: "same as yesterday", "same weekday last week", "same weekday two weeks ago". If the model cannot beat these, it is not worth using.
+
+| Next-day forecast | MAE |
+| --- | ---: |
+| Same as yesterday | 1991.1 |
+| Same weekday last week | 665.2 |
+| Same weekday 2 weeks ago | 278.2 |
+| LSTM, one run | 248.3 |
+| **LSTM, average of 5 random starts** | **271.3** |
+
+- **MAE** is how many sales units the forecast is off on average. **RMSE** is similar but big misses count extra.
+- **One run flattered the LSTM.** The first run scored 248.3, about 11% better than the best baseline. A neural network starts from random numbers (a **seed**), so we repeated the training from 5 different seeds: the scores were 238, 249, 256, 293 and 320 (average 271.3). That is only about 2.5% better than the baseline's 278.2, and the LSTM beat the baseline in just 3 of 5 runs. The honest summary is **roughly a tie**. Lesson: judge a neural network from several runs, never one.
+- **Always compare with the strongest simple baseline.** The easy baselines (yesterday, last week) made the LSTM look much better at first. A baseline has no randomness, so it scores the same every time.
+- **The data is made up.** The real Kaggle Rossmann file needs a Kaggle account. These scores prove the code works, not that it forecasts real demand.
+
+**Try it:** `python -m src.train_day9`, then `python -m src.demand_service`.
+
+---
+
 ## 5. The model zoo: what each model is, in one or two lines
 
 First, two families of problem:

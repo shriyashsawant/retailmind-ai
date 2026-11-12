@@ -28,6 +28,12 @@ DAY7_RESULTS_FILE = "models/day7_results.json"
 DETECTIONS_FILE = "reports/day7_detections.json"         # Day 7: what YOLO found in the sample image
 DETECTIONS_IMAGE = "reports/day7_detections.jpg"         # Day 7: the sample image with boxes drawn on it
 PRODUCT_IMAGES_FOLDER ="data/fashion_product_images"    # Kaggle: paramaggarwal/fashion-product-images-small (images/ + styles.csv)
+SALES_FILE = "data/raw/rossmann/train.csv"               # Kaggle: Rossmann Store Sales (Store, Date, Sales). If missing, made-up sales are used
+DEMAND_LSTM_FILE = "models/demand_lstm.keras"            # Day 9: LSTM that forecasts tomorrow's sales
+DAY9_RESULTS_FILE = "models/day9_results.json"
+SEQ2SEQ_FILE = "models/demand_seq2seq.keras"             # Day 10: Seq2Seq + attention that forecasts the next 4 weeks
+DAY10_RESULTS_FILE = "models/day10_results.json"
+ATTENTION_IMAGE = "reports/day10_attention.png"          # Day 10: which past days each forecast day looked at
 
 # --- column names ---
 TARGET_COLUMN = "Churn"          # what we want to predict (Yes / No)
