@@ -75,6 +75,7 @@ retailmind-ai/
 │   ├── run_day8.py      # Day 8: measure the above and save pictures
 │   ├── demand_data.py   # Days 9-10: daily store sales (real Rossmann file or made-up) cut into windows
 │   ├── train_day9.py    # Day 9: LSTM that forecasts tomorrow's sales, vs simple baselines
+│   ├── check_day9_seeds.py    # Day 9: repeat the training from 5 random starts to see how much scores swing
 │   ├── demand_service.py   # the demand module: forecast_next_day() (Day 9)
 │   └── service.py       # predict() helper + command line
 ├── docs/
@@ -512,13 +513,15 @@ forecast_next_day(last_28_days_of_sales)      # one store's last 28 days of sale
 | Same as yesterday | 1991.1 | 3072.3 |
 | Same as the same weekday last week | 665.2 | 853.1 |
 | Same as the same weekday 2 weeks ago | 278.2 | 386.1 |
-| **LSTM** (4,385 weights) | **248.3** | **329.9** |
+| **LSTM** (4,385 weights), one run (seed 42) | 248.3 | 329.9 |
+| **LSTM**, mean of 5 random starts | **271.3** (std 30.5) | |
 
 **Honest reading**
-- The LSTM beats the best baseline, but only by 29.9 units of MAE (about 11%). The fair baseline is "2 weeks ago", because the made-up promotions repeat every 2 weeks; comparing only with "yesterday" or "last week" would have made the LSTM look far better than it is.
+- **One run said the LSTM beats the best baseline by 11% (248.3 vs 278.2). Five random starts say it roughly ties it.** A neural network starts from random numbers, so repeating the training from 5 different starts (`python -m src.check_day9_seeds`) gave 238.3, 248.9, 256.4, 292.9 and 319.9: mean 271.3, spread (std) 30.5. That is only about 2.5% better than the baseline's 278.2, and the LSTM beat the baseline in just 3 of the 5 runs. The 248.3 in the table was a favourable start.
+- The fair baseline is "2 weeks ago", because the made-up promotions repeat every 2 weeks; comparing only with "yesterday" or "last week" would have made the LSTM look far better than it is.
 - The first training run stopped at the 40-round limit, so the limit was too low (the same lesson as Day 6). With a limit of 150, early stopping ended it at 69 rounds.
 - The data was made up with a clean repeating pattern, so a model that finds it should do well. Real Rossmann sales (holidays, school breaks, competitors opening) are messier and may give different results.
-- One run, one seed. MAE is used because many days have 0 sales (closed), which breaks percentage errors.
+- MAE is used because many days have 0 sales (closed), which breaks percentage errors. The baselines do not learn, so they give the same score every time.
 
 ---
 
@@ -543,7 +546,7 @@ forecast_next_day(last_28_days_of_sales)      # one store's last 28 days of sale
 - [x] **Day 6** — CNN image classifier for catalog photos (Fashion-MNIST prototype; real product photos supported but not yet run)
 - [x] **Day 7** — ResNet50 transfer learning compared with the Day 6 CNN (the CNN won on Fashion-MNIST), plus a YOLO detector module
 - [x] **Day 8** — OpenCV background removal, Grad-CAM explanations and one packaged CV module (closes Phase 2)
-- [x] **Day 9** — LSTM demand forecast (next day) on made-up Rossmann-style sales, against simple baselines
+- [x] **Day 9** — LSTM demand forecast (next day) on made-up Rossmann-style sales; over 5 random starts it roughly ties the best simple baseline
 - [ ] Later — class-imbalance handling, API layer, monitoring, deployment
 
 ---

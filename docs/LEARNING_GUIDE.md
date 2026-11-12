@@ -280,10 +280,12 @@ For our CNN, Trouser, Bag, Sandal and Ankle boot are almost always right (96% to
 | Same as yesterday | 1991.1 |
 | Same weekday last week | 665.2 |
 | Same weekday 2 weeks ago | 278.2 |
-| **LSTM** | **248.3** |
+| LSTM, one run | 248.3 |
+| **LSTM, average of 5 random starts** | **271.3** |
 
 - **MAE** is how many sales units the forecast is off on average. **RMSE** is similar but big misses count extra.
-- **The LSTM won, but only by about 11% over the best baseline.** The easy baselines (yesterday, last week) made it look much better at first. Always compare with the strongest simple baseline.
+- **One run flattered the LSTM.** The first run scored 248.3, about 11% better than the best baseline. A neural network starts from random numbers (a **seed**), so we repeated the training from 5 different seeds: the scores were 238, 249, 256, 293 and 320 (average 271.3). That is only about 2.5% better than the baseline's 278.2, and the LSTM beat the baseline in just 3 of 5 runs. The honest summary is **roughly a tie**. Lesson: judge a neural network from several runs, never one.
+- **Always compare with the strongest simple baseline.** The easy baselines (yesterday, last week) made the LSTM look much better at first. A baseline has no randomness, so it scores the same every time.
 - **The data is made up.** The real Kaggle Rossmann file needs a Kaggle account. These scores prove the code works, not that it forecasts real demand.
 
 **Try it:** `python -m src.train_day9`, then `python -m src.demand_service`.
