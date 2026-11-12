@@ -311,8 +311,9 @@ For our CNN, Trouser, Bag, Sandal and Ankle boot are almost always right (96% to
 | Seq2Seq **without** attention | **272.2** |
 | Seq2Seq **with** attention | 286.0 |
 
-- **Attention did not help in this run.** The same network without it was better. That is a real result, not a mistake: attention is not free, and on a simple, repeating pattern it may add nothing. With one seed the gap could also be noise.
-- **The best model is only about 4% better than the best simple baseline.** The easy baselines are strong on this clean made-up data.
+- **One run is not enough for a neural network.** The table above is one **seed** (one random starting point). A network starts from random numbers, so repeating the same training gives different scores. We repeated it from 5 random starts: without attention the score ranged from 287 to 646 (average 401); with attention from 276 to 398 (average 315). The very first run happened to favour the no-attention model, which made attention look useless. That conclusion was wrong. Lesson: **never judge a neural-network idea from a single run.**
+- **Attention was better on average and more stable** (3 of 5 runs, spread 44 against 132). With only 5 runs that is suggestive, not proof.
+- **Neither version reliably beat a trivial rule.** "Same weekday 2 weeks ago" scores 284.6, better than the average of both models. Only some individual runs beat it. The easy baselines are strong on this clean made-up data.
 - **Reading the attention heatmap.** Bright means "this past day was used a lot". Here the bright band slides diagonally, so later forecast days look at more recent days. It did not pick out "the same weekday" (7, 14, 21 days back). Be careful: attention looks at the encoder's notes, and each note mixes in earlier days, so a bright cell does not prove that one day's sales mattered.
 - **The demand module now forecasts weeks:** `forecast_weeks()` returns 28 daily numbers and 4 weekly totals, which is what procurement needs.
 

@@ -76,6 +76,7 @@ retailmind-ai/
 │   ├── demand_data.py   # Days 9-10: daily store sales (real Rossmann file or made-up) cut into windows
 │   ├── train_day9.py    # Day 9: LSTM that forecasts tomorrow's sales, vs simple baselines
 │   ├── train_day10.py   # Day 10: Seq2Seq + attention that forecasts the next 4 weeks
+│   ├── check_day10_seeds.py   # Day 10: repeat the training from 5 random starts to see how much scores swing
 │   ├── demand_service.py   # the demand module: forecast_next_day() (Day 9), forecast_weeks() (Day 10)
 │   └── service.py       # predict() helper + command line
 ├── docs/
@@ -538,7 +539,7 @@ forecast_weeks(last_56_days_of_sales)      # {"daily": [28 numbers], "weekly_tot
 
 **The task.** Read 8 weeks (56 days) of a store's sales and forecast the next 4 weeks (28 days) at once, with the same time-based split as Day 9 (232 test windows). A **Seq2Seq** model has an *encoder* that reads the history and a *decoder* that writes the forecast. **Attention** lets every forecast day look back across all 56 past days and choose which ones to listen to. The decoder is not fed its own earlier guesses (no teacher forcing, no step-by-step loop). The sales are **made up**, as on Day 9.
 
-| Forecast of the next 28 days | MAE | RMSE | MAE week 1 / 2 / 3 / 4 |
+| Forecast of the next 28 days (one run, seed 42) | MAE | RMSE | MAE week 1 / 2 / 3 / 4 |
 | --- | ---: | ---: | --- |
 | Same weekday last week | 474.2 | 671.6 | 661.3 / 278.4 / 677.5 / 279.4 |
 | Same weekday 2 weeks ago | 284.6 | 403.3 | 278.0 / 278.4 / 302.7 / 279.4 |
@@ -547,8 +548,16 @@ forecast_weeks(last_56_days_of_sales)      # {"daily": [28 numbers], "weekly_tot
 | Seq2Seq **with** attention | 286.0 | 386.6 | 264.1 / 279.3 / 302.2 / 298.4 |
 
 **Honest reading**
-- **Attention did not help in this run.** The same network without attention scored better (272.2 vs 286.0), and the attention model is no better than the "2 weeks ago" baseline (284.6). One seed, so a gap of 14 units could be noise; this was not tested.
-- **Seq2Seq without attention is the best model here, but only a little:** about 4% better than the best baseline and 5% better than the Day 9 LSTM rolled forward. Rolling Day 9 forward gets worse with distance (253.5 in week 1, 305.4 in week 4), which is the "mistakes pile up" problem; the Seq2Seq models grow less.
+- **The table above is ONE random start (seed 42), and one start is not reliable.** A neural network starts from random numbers. Run 5 times (`python -m src.check_day10_seeds`), the score swings a lot:
+
+  | 28-day MAE over 5 random starts | Mean | Spread (std) | Best to worst |
+  | --- | ---: | ---: | --- |
+  | Seq2Seq without attention | 401.0 | 132.4 | 287.1 to 645.8 |
+  | Seq2Seq with attention | 315.2 | 44.4 | 275.6 to 397.9 |
+
+  Attention was better in 3 of the 5 runs, better by 85.8 on average, and far more stable. With only 5 runs this is suggestive, not proof. My first reading of this page said "attention did not help" because of the single seed-42 run (272.2 without vs 286.0 with); that was a lucky start for the no-attention model and the conclusion was wrong.
+- **Neither Seq2Seq version reliably beats a trivial rule.** The best simple baseline, "same weekday 2 weeks ago", scores 284.6. The average Seq2Seq score (315.2 with attention, 401.0 without) is worse than that. Only some individual runs beat it. The saved model (seed 42, with attention) scores 286.0, about the same as the baseline.
+- **Rolling Day 9 forward gets worse with distance** (253.5 in week 1, 305.4 in week 4), the "mistakes pile up" problem. It was run once, with the trained Day 9 model, so it has no seed spread of its own.
 - **The attention weights do not give a clean explanation.** On average the forecast looks most at the days 29 to 33 days back. The share of attention on 7, 14, 21 ... days back is 0.152, barely above an even spread (0.143), so it did not learn "same weekday" lags. In `reports/day10_attention.png` the bright band moves diagonally: later forecast days look at more recent past days. Attention here is over the encoder's LSTM states, and each state mixes in everything before it, so a bright cell does not mean that single day's sales mattered (a likely reason, not tested).
 - The data is made up, so these scores show that the code works, not how it would do on real Rossmann sales. If you add the real `train.csv`, rerun both scripts.
 
@@ -576,7 +585,7 @@ forecast_weeks(last_56_days_of_sales)      # {"daily": [28 numbers], "weekly_tot
 - [x] **Day 7** — ResNet50 transfer learning compared with the Day 6 CNN (the CNN won on Fashion-MNIST), plus a YOLO detector module
 - [x] **Day 8** — OpenCV background removal, Grad-CAM explanations and one packaged CV module (closes Phase 2)
 - [x] **Day 9** — LSTM demand forecast (next day) on made-up Rossmann-style sales, against simple baselines
-- [x] **Day 10** — Seq2Seq + attention 4-week forecast; attention did not beat the same network without it, and the demand module now emits multi-week forecasts
+- [x] **Day 10** — Seq2Seq + attention 4-week forecast. Over 5 random starts attention was more stable and better on average, but neither version reliably beat a "same weekday 2 weeks ago" baseline; the demand module now emits multi-week forecasts
 - [ ] Later — class-imbalance handling, API layer, monitoring, deployment
 
 ---
