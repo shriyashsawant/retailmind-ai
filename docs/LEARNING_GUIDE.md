@@ -290,6 +290,36 @@ For our CNN, Trouser, Bag, Sandal and Ankle boot are almost always right (96% to
 
 ---
 
+## 4g. Day 10: forecasting a month ahead (Seq2Seq and attention)
+
+**The new problem.** Tomorrow's forecast is not enough to order stock for a month. We need the next 28 days.
+
+**Two ways to forecast many days.**
+- **Roll forward.** Use the Day 9 model to predict tomorrow, add that guess to the history, predict the next day, and repeat 28 times. Small mistakes get fed back in and can pile up.
+- **Seq2Seq (sequence to sequence).** An **encoder** reads 8 weeks of history and summarises it. A **decoder** then writes all 28 forecast days from that summary in one go.
+
+**Attention.** The summary is one short note for 56 days, so detail gets lost. Attention lets each forecast day look back across **all** 56 past days and decide how much to listen to each one. The weights are numbers between 0 and 1 that add up to 1 for each forecast day. They can be shown as a heatmap.
+
+**Teacher forcing (not used here).** Some decoders are trained by feeding them the true previous value, and at forecast time their own earlier guesses. The two differ, which can make errors grow. Our decoder is never fed values, so there is no such mismatch.
+
+**Fair comparison.** Same windows, same time-based split, same scaling. We compare five forecasts of the next 28 days (the table shows four of them; "same weekday last week" is the fifth), with the error shown for week 1, 2, 3 and 4 separately in the README, because the error grows with distance.
+
+| Forecast of the next 28 days | MAE |
+| --- | ---: |
+| Same weekday 2 weeks ago | 284.6 |
+| Day 9 LSTM rolled forward | 287.0 |
+| Seq2Seq **without** attention | **272.2** |
+| Seq2Seq **with** attention | 286.0 |
+
+- **Attention did not help in this run.** The same network without it was better. That is a real result, not a mistake: attention is not free, and on a simple, repeating pattern it may add nothing. With one seed the gap could also be noise.
+- **The best model is only about 4% better than the best simple baseline.** The easy baselines are strong on this clean made-up data.
+- **Reading the attention heatmap.** Bright means "this past day was used a lot". Here the bright band slides diagonally, so later forecast days look at more recent days. It did not pick out "the same weekday" (7, 14, 21 days back). Be careful: attention looks at the encoder's notes, and each note mixes in earlier days, so a bright cell does not prove that one day's sales mattered.
+- **The demand module now forecasts weeks:** `forecast_weeks()` returns 28 daily numbers and 4 weekly totals, which is what procurement needs.
+
+**Try it:** `python -m src.train_day10` (run Day 9 first), then `python -m src.demand_service`.
+
+---
+
 ## 5. The model zoo: what each model is, in one or two lines
 
 First, two families of problem:
