@@ -1,0 +1,21 @@
+{
+  "data": "MADE-UP sales for 8 stores (the real Rossmann file was not found)",
+  "seeds": [
+    1,
+    2,
+    3,
+    4,
+    5
+  ],
+  "lstm_mae_per_seed": [
+    248.9,
+    238.3,
+    319.9,
+    292.9,
+    256.4
+  ],
+  "mean": 271.3,
+  "std": 30.5,
+  "baseline_same_weekday_2_weeks_ago": 278.2,
+  "runs_that_beat_baseline": 3
+}
