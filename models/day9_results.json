@@ -1,0 +1,106 @@
+{
+  "data": "MADE-UP sales for 8 stores (the real Rossmann file was not found)",
+  "stores": 8,
+  "days": 960,
+  "lookback_days": 28,
+  "horizon_days": 1,
+  "windows": {
+    "train": 6560,
+    "validation": 448,
+    "test": 448
+  },
+  "weights": 4385,
+  "rounds_trained": 69,
+  "test_scores": {
+    "LSTM": {
+      "mae": 248.3,
+      "rmse": 329.9
+    },
+    "same as yesterday": {
+      "mae": 1991.1,
+      "rmse": 3072.3
+    },
+    "same as last week": {
+      "mae": 665.2,
+      "rmse": 853.1
+    },
+    "same as 2 weeks ago": {
+      "mae": 278.2,
+      "rmse": 386.1
+    }
+  },
+  "verdict": "The LSTM beats the best baseline (same as 2 weeks ago) by 29.9 sales units of MAE.",
+  "sample_store": 1,
+  "sample_last_14_days": [
+    {
+      "actual": 5221,
+      "lstm": 4714,
+      "same_as_last_week": 4037
+    },
+    {
+      "actual": 4256,
+      "lstm": 4610,
+      "same_as_last_week": 4171
+    },
+    {
+      "actual": 4881,
+      "lstm": 5117,
+      "same_as_last_week": 5034
+    },
+    {
+      "actual": 5112,
+      "lstm": 5449,
+      "same_as_last_week": 6189
+    },
+    {
+      "actual": 0,
+      "lstm": 0,
+      "same_as_last_week": 0
+    },
+    {
+      "actual": 5043,
+      "lstm": 4971,
+      "same_as_last_week": 6113
+    },
+    {
+      "actual": 4298,
+      "lstm": 4406,
+      "same_as_last_week": 5079
+    },
+    {
+      "actual": 4030,
+      "lstm": 4114,
+      "same_as_last_week": 5221
+    },
+    {
+      "actual": 4087,
+      "lstm": 4357,
+      "same_as_last_week": 4256
+    },
+    {
+      "actual": 5027,
+      "lstm": 4861,
+      "same_as_last_week": 4881
+    },
+    {
+      "actual": 5831,
+      "lstm": 6400,
+      "same_as_last_week": 5112
+    },
+    {
+      "actual": 0,
+      "lstm": 0,
+      "same_as_last_week": 0
+    },
+    {
+      "actual": 6047,
+      "lstm": 5861,
+      "same_as_last_week": 5043
+    },
+    {
+      "actual": 5222,
+      "lstm": 5092,
+      "same_as_last_week": 4298
+    }
+  ]
+}
