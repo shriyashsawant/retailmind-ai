@@ -84,6 +84,7 @@ retailmind-ai/
 │   ├── train_day13.py   # Day 13: DistilBERT (frozen and fine-tuned) vs TF-IDF for sentiment, plus ticket routing
 │   ├── sentiment_service.py   # the text module: predict_sentiment() and route_ticket()
 │   ├── demand_service.py   # the demand module: forecast_next_day() (Day 9), forecast_weeks() (Day 10)
+│   ├── demand_service.py   # the demand module: forecast_next_day() (Day 9)
 │   └── service.py       # predict() helper + command line
 ├── docs/
 │   └── LEARNING_GUIDE.md   # Days 1-13 explained in plain English
