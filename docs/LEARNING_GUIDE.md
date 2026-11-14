@@ -323,6 +323,35 @@ For our CNN, Trouser, Bag, Sandal and Ankle boot are almost always right (96% to
 
 ---
 
+## 4h. Day 11: a VAE that draws extra pictures for a thin category
+
+**The new problem.** Some product categories have very few training pictures. A classifier trained on them is weakest exactly there, which is unfair to those products. Idea: teach a network to **draw new pictures** of the thin category and add them to the training set.
+
+**VAE (variational autoencoder).** It has two halves.
+- The **encoder** squeezes a picture into a short code: 8 numbers (a mean and a spread for each).
+- The **decoder** draws a picture back from a code.
+- Training makes the drawing look like the original (**reconstruction loss**) and keeps the codes close to a standard bell curve (**KL loss**). The second part is the trick: because every code lives near the bell curve, we can pick a **random** code later and the decoder draws a **new** picture, not one it has seen.
+
+**What we did.** The weakest category on Day 6 is Shirt (recall 0.731). We pretended we only had 100 shirt pictures (1,000 for every other category), trained a VAE on those 100, drew 900 new shirts, and retrained the Day 6 CNN. Each result is the average of **5 random starts**, as on Days 9 and 10.
+
+**A fair control.** To know if the VAE adds anything, we also tried the cheapest idea: just **repeat** the 100 real pictures until there are 1,000. If the VAE cannot beat that, it is not worth the effort.
+
+| Training set | Shirt recall | Accuracy |
+| --- | ---: | ---: |
+| Thin data only | 0.082 | 0.841 |
+| + 100 real shirts repeated | **0.273** | **0.860** |
+| + 900 VAE pictures | 0.185 | 0.851 |
+
+- **The VAE helped, but plain repetition helped more.** Shirt recall went from 0.08 to 0.19 with VAE pictures, and to 0.27 with repeated real pictures (better in all 5 pairs of matching runs). This is a real result, not a mistake: a generator is only useful if its pictures add something new.
+- **Why the VAE's pictures are weak.** Look at `reports/day11_samples.png`: the drawings are blurry and all look like an "average long-sleeve shirt". A tiny VAE trained on 100 pictures cannot learn much variety (the numbers agree: 6.8 between drawings against 9.5 between real shirts). That is a likely reason, not a tested one.
+- **Mode collapse** means a generator draws only a few kinds of picture and ignores the rest. Our VAE shows a mild form of it.
+- **Checking drawn pictures.** We compared each drawing with its nearest real picture, but all 900 passed, so the check did nothing: blurry average pictures are close to real ones in raw pixel distance. A stronger check would train a small classifier to tell real from drawn.
+- **Fairness.** The other categories did not get worse (0.925 recall either way), so the lift for Shirt did not come at their cost. But even the best setup (0.27) is far from what 60 times more real shirts give (0.73).
+
+**Try it:** `python -m src.train_day11` (run Day 6 first).
+
+---
+
 ## 5. The model zoo: what each model is, in one or two lines
 
 First, two families of problem:
