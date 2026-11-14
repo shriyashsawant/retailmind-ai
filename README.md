@@ -78,10 +78,11 @@ retailmind-ai/
 │   ├── check_day9_seeds.py    # Day 9: repeat the training from 5 random starts to see how much scores swing
 │   ├── train_day10.py   # Day 10: Seq2Seq + attention that forecasts the next 4 weeks
 │   ├── check_day10_seeds.py   # Day 10: repeat the training from 5 random starts to see how much scores swing
+│   ├── train_day11.py   # Day 11: a VAE draws extra pictures of a thin category; does the CNN improve?
 │   ├── demand_service.py   # the demand module: forecast_next_day() (Day 9), forecast_weeks() (Day 10)
 │   └── service.py       # predict() helper + command line
 ├── docs/
-│   └── LEARNING_GUIDE.md   # Days 1-10 explained in plain English
+│   └── LEARNING_GUIDE.md   # Days 1-11 explained in plain English
 ├── models/              # persisted pipeline + metrics (generated)
 ├── notebooks/
 │   ├── 01_eda_and_baseline.ipynb
@@ -90,8 +91,9 @@ retailmind-ai/
 │   ├── 04_day7_transfer_detection.ipynb   # Day 7: transfer learning + detection results
 │   ├── 05_day8_segmentation_gradcam.ipynb # Day 8: background removal + Grad-CAM, run live
 │   ├── 06_day9_lstm_demand.ipynb          # Day 9: LSTM demand forecast, results and the demand module
-│   └── 07_day10_seq2seq_attention.ipynb   # Day 10: 4-week forecast with Seq2Seq + attention
-├── reports/             # generated data profile, Day 7 detections, Day 8 pictures
+│   ├── 07_day10_seq2seq_attention.ipynb   # Day 10: 4-week forecast with Seq2Seq + attention
+│   └── 08_day11_vae_augmentation.ipynb    # Day 11: VAE pictures for a thin category, results and samples
+├── reports/             # generated data profile, Day 7 detections, Day 8 and Day 11 pictures, Day 10 attention
 ├── requirements.txt
 └── README.md
 ```
@@ -566,6 +568,31 @@ forecast_weeks(last_56_days_of_sales)      # {"daily": [28 numbers], "weekly_tot
 
 ---
 
+## Day 11 — A VAE that draws extra pictures for a thin category
+
+```bash
+python -m src.train_day11       # about 15 minutes on a laptop CPU (run src.train_day6 first)
+```
+
+**The task.** Some categories have few training pictures and the classifier is weakest on them. A **VAE** (variational autoencoder) is a network that learns to draw new pictures that look like its training pictures. The script finds the weakest category in the Day 6 results (**Shirt**, recall 0.731), then **pretends we only have 100 shirt pictures** (and 1,000 of every other category). It trains a VAE on those 100 shirts, draws 900 new ones, adds them to the training set, retrains the Day 6 CNN, and compares per-category recall on the full 10,000-picture test set. Every number below is the average of **5 random starts**, because Day 9 and Day 10 showed that one run can mislead.
+
+| Training set | Shirt recall (mean ± std) | Accuracy | Other 9 categories (mean recall) | T-shirt recall |
+| --- | ---: | ---: | ---: | ---: |
+| Thin data only (100 shirts) | 0.082 ± 0.083 | 0.8411 | 0.9254 | 0.9058 |
+| + the 100 real shirts **repeated** to 1,000 (control) | **0.273 ± 0.053** | **0.8602** | 0.9255 | 0.9106 |
+| + 900 **VAE** pictures | 0.185 ± 0.037 | 0.8507 | 0.9247 | 0.9022 |
+
+For reference, the Day 6 CNN trained on all 60,000 pictures (6,000 shirts) reached Shirt recall 0.731. `reports/day11_samples.png` shows 24 real shirts (top) and 48 VAE drawings (below).
+
+**Honest reading**
+- **The VAE pictures helped, but plain repetition helped more.** With only 100 shirts the classifier almost never says "Shirt" (recall 0.08). Adding the VAE's pictures lifts that to 0.19 without hurting the other categories (0.925 either way; T-shirt recall dipped by 0.004). But simply repeating the 100 real pictures to the same count gives 0.27, and it beat the VAE in all 5 pairs of runs that share the same random start. So in this experiment the VAE did **not** earn its place over a free baseline.
+- **Why, probably (not tested):** the VAE's drawings are blurry and look alike. In `day11_samples.png` they are all an "average long-sleeve shirt", with none of the tank tops or bold patterns of the real ones, and the numbers agree (variety between drawings 6.8 against 9.5 between real shirts). They add little new information, while repeated real pictures keep every sharp detail.
+- **My "keep only realistic outputs" step did not filter anything.** I compared each drawing with its nearest real shirt and dropped those farther than 95% of real pictures are from each other; all 900 passed. Blurry average pictures sit close to real ones in raw pixel distance, so this check cannot tell blurry from realistic. A better check (for example a classifier trained to tell real from drawn) was not built.
+- **Nothing here comes close to having real data.** The best setup reaches Shirt recall 0.27, against 0.73 with 60 times more shirts.
+- **Limits.** Shirt is not really rare in Fashion-MNIST; it was thinned on purpose to simulate a rare category. The Kaggle product photos were not used (they need an account). It is one small dense VAE (trained once, seed 42), so the spread between different VAE trainings is not measured, and a better generator (a convolutional VAE or a GAN) might do better. Not tried.
+
+---
+
 ## Design notes
 
 - **Simple code.** Short functions, plain loops and comments that explain *why*, so a beginner can read every file top to bottom.
@@ -589,6 +616,7 @@ forecast_weeks(last_56_days_of_sales)      # {"daily": [28 numbers], "weekly_tot
 - [x] **Day 8** — OpenCV background removal, Grad-CAM explanations and one packaged CV module (closes Phase 2)
 - [x] **Day 9** — LSTM demand forecast (next day) on made-up Rossmann-style sales; over 5 random starts it roughly ties the best simple baseline
 - [x] **Day 10** — Seq2Seq + attention 4-week forecast. Over 5 random starts attention was more stable and better on average, but neither version reliably beat a "same weekday 2 weeks ago" baseline; the demand module now emits multi-week forecasts
+- [x] **Day 11** — VAE pictures for a thin category (Shirt): they lifted Shirt recall from 0.08 to 0.19, but repeating the 100 real pictures did better (0.27)
 - [ ] Later — class-imbalance handling, API layer, monitoring, deployment
 
 ---
