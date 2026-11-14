@@ -1,0 +1,72 @@
+{
+  "thin_category": "Shirt",
+  "day6_recall": 0.731,
+  "real_pictures_kept": 100,
+  "other_pictures_per_category": 1000,
+  "drawn_total": 900,
+  "inspection": {
+    "real_to_real_nearest_mean": 5.007,
+    "drawn_to_real_nearest_mean": 4.19,
+    "limit_used_to_keep": 7.861,
+    "drawn_kept": 900,
+    "drawn_total": 900,
+    "variety_between_real": 9.523,
+    "variety_between_drawn": 6.827,
+    "mean_brightness_real": 0.328,
+    "mean_brightness_drawn": 0.3115
+  },
+  "seeds": [
+    1,
+    2,
+    3,
+    4,
+    5
+  ],
+  "setups": {
+    "thin data only": {
+      "accuracy_mean": 0.8411,
+      "accuracy_std": 0.0097,
+      "thin_recall_mean": 0.0822,
+      "thin_recall_std": 0.0827,
+      "thin_recall_per_seed": [
+        0.142,
+        0.038,
+        0.013,
+        0.003,
+        0.215
+      ],
+      "other_categories_recall_mean": 0.9254,
+      "tshirt_recall_mean": 0.9058
+    },
+    "real pictures repeated": {
+      "accuracy_mean": 0.8602,
+      "accuracy_std": 0.0033,
+      "thin_recall_mean": 0.2726,
+      "thin_recall_std": 0.0532,
+      "thin_recall_per_seed": [
+        0.238,
+        0.342,
+        0.19,
+        0.306,
+        0.287
+      ],
+      "other_categories_recall_mean": 0.9255,
+      "tshirt_recall_mean": 0.9106
+    },
+    "thin data + VAE pictures": {
+      "accuracy_mean": 0.8507,
+      "accuracy_std": 0.0022,
+      "thin_recall_mean": 0.185,
+      "thin_recall_std": 0.0369,
+      "thin_recall_per_seed": [
+        0.176,
+        0.239,
+        0.159,
+        0.137,
+        0.214
+      ],
+      "other_categories_recall_mean": 0.9247,
+      "tshirt_recall_mean": 0.9022
+    }
+  }
+}

@@ -34,6 +34,9 @@ DAY9_RESULTS_FILE = "models/day9_results.json"
 SEQ2SEQ_FILE = "models/demand_seq2seq.keras"             # Day 10: Seq2Seq + attention that forecasts the next 4 weeks
 DAY10_RESULTS_FILE = "models/day10_results.json"
 ATTENTION_IMAGE = "reports/day10_attention.png"          # Day 10: which past days each forecast day looked at
+VAE_DECODER_FILE = "models/thin_class_vae_decoder.keras" # Day 11: the part of the VAE that draws new pictures
+DAY11_RESULTS_FILE = "models/day11_results.json"
+SYNTHETIC_IMAGE = "reports/day11_samples.png"            # Day 11: real pictures next to the VAE's pictures
 
 # --- column names ---
 TARGET_COLUMN = "Churn"          # what we want to predict (Yes / No)

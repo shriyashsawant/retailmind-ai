@@ -1,0 +1,78 @@
+{
+  "data": "MADE-UP sales for 8 stores (the real Rossmann file was not found)",
+  "lookback_days": 56,
+  "horizon_days": 28,
+  "windows": {
+    "train": 6120,
+    "validation": 232,
+    "test": 232
+  },
+  "rounds_trained": {
+    "Seq2Seq without attention": 88,
+    "Seq2Seq with attention": 70
+  },
+  "test_scores": {
+    "same weekday last week": {
+      "mae": 474.2,
+      "rmse": 671.6,
+      "mae_by_week": [
+        661.3,
+        278.4,
+        677.5,
+        279.4
+      ]
+    },
+    "same weekday 2 weeks ago": {
+      "mae": 284.6,
+      "rmse": 403.3,
+      "mae_by_week": [
+        278.0,
+        278.4,
+        302.7,
+        279.4
+      ]
+    },
+    "Day 9 LSTM rolled forward": {
+      "mae": 287.0,
+      "rmse": 384.9,
+      "mae_by_week": [
+        253.5,
+        277.2,
+        311.9,
+        305.4
+      ]
+    },
+    "Seq2Seq without attention": {
+      "mae": 272.2,
+      "rmse": 367.7,
+      "mae_by_week": [
+        251.8,
+        266.1,
+        279.1,
+        291.7
+      ]
+    },
+    "Seq2Seq with attention": {
+      "mae": 286.0,
+      "rmse": 386.6,
+      "mae_by_week": [
+        264.1,
+        279.3,
+        302.2,
+        298.4
+      ]
+    }
+  },
+  "lowest_mae": "Seq2Seq without attention",
+  "attention": {
+    "most_used_days_back": [
+      31,
+      30,
+      32,
+      29,
+      33
+    ],
+    "share_on_weekly_lags": 0.152,
+    "share_if_even": 0.143
+  }
+}

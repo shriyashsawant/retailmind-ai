@@ -1,0 +1,36 @@
+{
+  "data": "MADE-UP sales for 8 stores (the real Rossmann file was not found)",
+  "seeds": [
+    1,
+    2,
+    3,
+    4,
+    5
+  ],
+  "summary": {
+    "without attention": {
+      "mae_per_seed": [
+        287.1,
+        431.1,
+        298.9,
+        342.1,
+        645.8
+      ],
+      "mean": 401.0,
+      "std": 132.4
+    },
+    "with attention": {
+      "mae_per_seed": [
+        397.9,
+        275.6,
+        308.9,
+        316.2,
+        277.5
+      ],
+      "mean": 315.2,
+      "std": 44.4
+    }
+  },
+  "attention_better_in_runs": 3,
+  "mean_gap_with_minus_without": -85.8
+}
