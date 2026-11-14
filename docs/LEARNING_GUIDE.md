@@ -292,6 +292,92 @@ For our CNN, Trouser, Bag, Sandal and Ankle boot are almost always right (96% to
 
 ---
 
+## 4g. Day 10: forecasting a month ahead (Seq2Seq and attention)
+
+**The new problem.** Tomorrow's forecast is not enough to order stock for a month. We need the next 28 days.
+
+**Two ways to forecast many days.**
+- **Roll forward.** Use the Day 9 model to predict tomorrow, add that guess to the history, predict the next day, and repeat 28 times. Small mistakes get fed back in and can pile up.
+- **Seq2Seq (sequence to sequence).** An **encoder** reads 8 weeks of history and summarises it. A **decoder** then writes all 28 forecast days from that summary in one go.
+
+**Attention.** The summary is one short note for 56 days, so detail gets lost. Attention lets each forecast day look back across **all** 56 past days and decide how much to listen to each one. The weights are numbers between 0 and 1 that add up to 1 for each forecast day. They can be shown as a heatmap.
+
+**Teacher forcing (not used here).** Some decoders are trained by feeding them the true previous value, and at forecast time their own earlier guesses. The two differ, which can make errors grow. Our decoder is never fed values, so there is no such mismatch.
+
+**Fair comparison.** Same windows, same time-based split, same scaling. We compare five forecasts of the next 28 days (the table shows four of them; "same weekday last week" is the fifth), with the error shown for week 1, 2, 3 and 4 separately in the README, because the error grows with distance.
+
+| Forecast of the next 28 days | MAE |
+| --- | ---: |
+| Same weekday 2 weeks ago | 284.6 |
+| Day 9 LSTM rolled forward | 287.0 |
+| Seq2Seq **without** attention | **272.2** |
+| Seq2Seq **with** attention | 286.0 |
+
+- **One run is not enough for a neural network.** The table above is one **seed** (one random starting point). A network starts from random numbers, so repeating the same training gives different scores. We repeated it from 5 random starts: without attention the score ranged from 287 to 646 (average 401); with attention from 276 to 398 (average 315). The very first run happened to favour the no-attention model, which made attention look useless. That conclusion was wrong. Lesson: **never judge a neural-network idea from a single run.**
+- **Attention was better on average and more stable** (3 of 5 runs, spread 44 against 132). With only 5 runs that is suggestive, not proof.
+- **Neither version reliably beat a trivial rule.** "Same weekday 2 weeks ago" scores 284.6, better than the average of both models. Only some individual runs beat it. The easy baselines are strong on this clean made-up data.
+- **Reading the attention heatmap.** Bright means "this past day was used a lot". Here the bright band slides diagonally, so later forecast days look at more recent days. It did not pick out "the same weekday" (7, 14, 21 days back). Be careful: attention looks at the encoder's notes, and each note mixes in earlier days, so a bright cell does not prove that one day's sales mattered.
+- **The demand module now forecasts weeks:** `forecast_weeks()` returns 28 daily numbers and 4 weekly totals, which is what procurement needs.
+
+**Try it:** `python -m src.train_day10` (run Day 9 first), then `python -m src.demand_service`.
+
+---
+
+## 4h. Day 11: a VAE that draws extra pictures for a thin category
+
+**The new problem.** Some product categories have very few training pictures. A classifier trained on them is weakest exactly there, which is unfair to those products. Idea: teach a network to **draw new pictures** of the thin category and add them to the training set.
+
+**VAE (variational autoencoder).** It has two halves.
+- The **encoder** squeezes a picture into a short code: 8 numbers (a mean and a spread for each).
+- The **decoder** draws a picture back from a code.
+- Training makes the drawing look like the original (**reconstruction loss**) and keeps the codes close to a standard bell curve (**KL loss**). The second part is the trick: because every code lives near the bell curve, we can pick a **random** code later and the decoder draws a **new** picture, not one it has seen.
+
+**What we did.** The weakest category on Day 6 is Shirt (recall 0.731). We pretended we only had 100 shirt pictures (1,000 for every other category), trained a VAE on those 100, drew 900 new shirts, and retrained the Day 6 CNN. Each result is the average of **5 random starts**, as on Days 9 and 10.
+
+**A fair control.** To know if the VAE adds anything, we also tried the cheapest idea: just **repeat** the 100 real pictures until there are 1,000. If the VAE cannot beat that, it is not worth the effort.
+
+| Training set | Shirt recall | Accuracy |
+| --- | ---: | ---: |
+| Thin data only | 0.082 | 0.841 |
+| + 100 real shirts repeated | **0.273** | **0.860** |
+| + 900 VAE pictures | 0.185 | 0.851 |
+
+- **The VAE helped, but plain repetition helped more.** Shirt recall went from 0.08 to 0.19 with VAE pictures, and to 0.27 with repeated real pictures (better in all 5 pairs of matching runs). This is a real result, not a mistake: a generator is only useful if its pictures add something new.
+- **Why the VAE's pictures are weak.** Look at `reports/day11_samples.png`: the drawings are blurry and all look like an "average long-sleeve shirt". A tiny VAE trained on 100 pictures cannot learn much variety (the numbers agree: 6.8 between drawings against 9.5 between real shirts). That is a likely reason, not a tested one.
+- **Mode collapse** means a generator draws only a few kinds of picture and ignores the rest. Our VAE shows a mild form of it.
+- **Checking drawn pictures.** We compared each drawing with its nearest real picture, but all 900 passed, so the check did nothing: blurry average pictures are close to real ones in raw pixel distance. A stronger check would train a small classifier to tell real from drawn.
+- **Fairness.** The other categories did not get worse (0.925 recall either way), so the lift for Shirt did not come at their cost. But even the best setup (0.27) is far from what 60 times more real shirts give (0.73).
+
+**Try it:** `python -m src.train_day11` (run Day 6 first).
+
+---
+
+## 4i. Day 12: reading product reviews (a classical baseline)
+
+**The new problem.** Now the input is **text**: a product review. The job is to decide if it is positive or negative. A model cannot read words, so first we turn each review into numbers.
+
+**Cleaning.** Reviews contain clutter that is not language: HTML tags like `<br />`, web addresses, and double spaces. We strip those out first.
+
+**TF-IDF.** The word "the" appears everywhere, so it tells us nothing; the word "disappointing" appears rarely and tells us a lot. **TF-IDF** (term frequency, inverse document frequency) counts how often each word appears in a review (**TF**) and scales it down by how many reviews contain that word (**IDF**), so rare, telling words weigh more. We also count **word pairs** like "waste money".
+
+**Logistic regression.** Remember it from Day 1: it learns one weight for each feature. Here a feature is a word, so a **positive weight** means "this word pushes toward positive". That makes it easy to explain: the biggest negative weights were *not, poor, money, boring, bad, disappointed, worst, waste*, and the biggest positive ones *great, love, best, perfect, wonderful*.
+
+**Pipeline.** The same idea as Day 1: the TF-IDF step and the model are chained, so exactly the same steps run when a new review comes in.
+
+| Result | Value |
+| --- | ---: |
+| Accuracy on 1,000 reviews it never saw | **0.870** |
+| Accuracy on its own training reviews | 0.996 |
+
+- **87% on 1,000 reviews has a margin of about plus or minus 1 point**, so a gap of a point or two against another model is not meaningful.
+- **The gap between 0.996 and 0.870 is overfitting.** With 37,000 features and only 4,000 reviews the model partly memorises. We set its strength by hand and did not tune it.
+- **Weak spots:** negation ("not bad") and sarcasm, because it counts words and does not understand sentences.
+- **Why it matters:** this is the baseline. Day 13 uses BERT, a much bigger model, and its job is to beat this number by enough to be worth the extra cost.
+
+**Try it:** `pip install huggingface_hub pyarrow`, then `python -m src.train_day12`.
+
+---
+
 ## 5. The model zoo: what each model is, in one or two lines
 
 First, two families of problem:
