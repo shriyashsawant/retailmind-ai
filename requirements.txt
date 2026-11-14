@@ -5,3 +5,7 @@ xgboost>=2.0
 tensorflow>=2.16
 pillow>=10.0
 opencv-python-headless>=4.9
+huggingface_hub>=0.24
+pyarrow>=15.0
+# Day 13 (BERT) also needs: pip install torch transformers   (large downloads, so not listed above)
+# Day 7 (YOLO detector) also needs: pip install ultralytics

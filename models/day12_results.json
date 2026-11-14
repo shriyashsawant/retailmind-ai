@@ -1,0 +1,45 @@
+{
+  "data": "Amazon reviews (fancyzhx/amazon_polarity test file), balanced sample",
+  "train_reviews": 4000,
+  "test_reviews": 1000,
+  "features": 37263,
+  "train_accuracy": 0.9962,
+  "test_scores": {
+    "accuracy": 0.87,
+    "precision": 0.8865,
+    "recall": 0.8629,
+    "f1": 0.8745,
+    "confusion_matrix": {
+      "negative_right": 417,
+      "negative_called_positive": 58,
+      "positive_called_negative": 72,
+      "positive_right": 453
+    }
+  },
+  "strongest_words": {
+    "negative": [
+      "not",
+      "poor",
+      "money",
+      "boring",
+      "bad",
+      "disappointed",
+      "worst",
+      "waste",
+      "nothing",
+      "disappointing"
+    ],
+    "positive": [
+      "great",
+      "love",
+      "best",
+      "perfect",
+      "wonderful",
+      "excellent",
+      "well",
+      "awesome",
+      "the best",
+      "easy"
+    ]
+  }
+}

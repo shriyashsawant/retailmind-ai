@@ -352,6 +352,32 @@ For our CNN, Trouser, Bag, Sandal and Ankle boot are almost always right (96% to
 
 ---
 
+## 4i. Day 12: reading product reviews (a classical baseline)
+
+**The new problem.** Now the input is **text**: a product review. The job is to decide if it is positive or negative. A model cannot read words, so first we turn each review into numbers.
+
+**Cleaning.** Reviews contain clutter that is not language: HTML tags like `<br />`, web addresses, and double spaces. We strip those out first.
+
+**TF-IDF.** The word "the" appears everywhere, so it tells us nothing; the word "disappointing" appears rarely and tells us a lot. **TF-IDF** (term frequency, inverse document frequency) counts how often each word appears in a review (**TF**) and scales it down by how many reviews contain that word (**IDF**), so rare, telling words weigh more. We also count **word pairs** like "waste money".
+
+**Logistic regression.** Remember it from Day 1: it learns one weight for each feature. Here a feature is a word, so a **positive weight** means "this word pushes toward positive". That makes it easy to explain: the biggest negative weights were *not, poor, money, boring, bad, disappointed, worst, waste*, and the biggest positive ones *great, love, best, perfect, wonderful*.
+
+**Pipeline.** The same idea as Day 1: the TF-IDF step and the model are chained, so exactly the same steps run when a new review comes in.
+
+| Result | Value |
+| --- | ---: |
+| Accuracy on 1,000 reviews it never saw | **0.870** |
+| Accuracy on its own training reviews | 0.996 |
+
+- **87% on 1,000 reviews has a margin of about plus or minus 1 point**, so a gap of a point or two against another model is not meaningful.
+- **The gap between 0.996 and 0.870 is overfitting.** With 37,000 features and only 4,000 reviews the model partly memorises. We set its strength by hand and did not tune it.
+- **Weak spots:** negation ("not bad") and sarcasm, because it counts words and does not understand sentences.
+- **Why it matters:** this is the baseline. Day 13 uses BERT, a much bigger model, and its job is to beat this number by enough to be worth the extra cost.
+
+**Try it:** `pip install huggingface_hub pyarrow`, then `python -m src.train_day12`.
+
+---
+
 ## 5. The model zoo: what each model is, in one or two lines
 
 First, two families of problem:

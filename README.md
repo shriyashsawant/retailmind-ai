@@ -79,6 +79,8 @@ retailmind-ai/
 │   ├── train_day10.py   # Day 10: Seq2Seq + attention that forecasts the next 4 weeks
 │   ├── check_day10_seeds.py   # Day 10: repeat the training from 5 random starts to see how much scores swing
 │   ├── train_day11.py   # Day 11: a VAE draws extra pictures of a thin category; does the CNN improve?
+│   ├── review_data.py   # Days 12-13: load and clean Amazon reviews; relabel some as support tickets
+│   ├── train_day12.py   # Day 12: classical sentiment baseline (TF-IDF + logistic regression)
 │   ├── demand_service.py   # the demand module: forecast_next_day() (Day 9), forecast_weeks() (Day 10)
 │   └── service.py       # predict() helper + command line
 ├── docs/
@@ -92,7 +94,8 @@ retailmind-ai/
 │   ├── 05_day8_segmentation_gradcam.ipynb # Day 8: background removal + Grad-CAM, run live
 │   ├── 06_day9_lstm_demand.ipynb          # Day 9: LSTM demand forecast, results and the demand module
 │   ├── 07_day10_seq2seq_attention.ipynb   # Day 10: 4-week forecast with Seq2Seq + attention
-│   └── 08_day11_vae_augmentation.ipynb    # Day 11: VAE pictures for a thin category, results and samples
+│   ├── 08_day11_vae_augmentation.ipynb    # Day 11: VAE pictures for a thin category, results and samples
+│   └── 09_day12_tfidf_sentiment.ipynb     # Day 12: classical review-sentiment baseline
 ├── reports/             # generated data profile, Day 7 detections, Day 8 and Day 11 pictures, Day 10 attention
 ├── requirements.txt
 └── README.md
@@ -593,6 +596,33 @@ For reference, the Day 6 CNN trained on all 60,000 pictures (6,000 shirts) reach
 
 ---
 
+## Day 12 — A classical sentiment baseline for product reviews
+
+```bash
+pip install huggingface_hub pyarrow     # for the review loader
+python -m src.train_day12               # about 1 minute; the first run downloads one 117 MB review file
+```
+
+**The task.** Decide whether a product review is positive or negative. We take a balanced sample from the public Hugging Face dataset **Amazon polarity** (4,000 reviews to train, 1,000 to test, half positive and half negative), clean it (remove HTML tags, web addresses and extra spaces), turn each review into numbers with **TF-IDF** (counts of single words and word pairs, with rare words weighted up), and train a **logistic regression**. This is the cheap baseline that Day 13's BERT has to beat.
+
+| Test reviews (1,000, never seen in training) | Result |
+| --- | ---: |
+| Accuracy | **0.870** |
+| Precision (positive) | 0.8865 |
+| Recall (positive) | 0.8629 |
+| F1 (positive) | 0.8745 |
+| Accuracy on its own 4,000 training reviews | 0.9962 |
+
+Mistakes: 58 negative reviews called positive and 72 positive reviews called negative. Words pushing toward **negative**: *not, poor, money, boring, bad, disappointed, worst, waste*. Toward **positive**: *great, love, best, perfect, wonderful, excellent, awesome*.
+
+**Honest reading**
+- **87% on 1,000 test reviews has a margin of about ±1 point** (a rough 95% range is 85 to 89), so a difference of a point or two against another model is not meaningful.
+- **It memorises the training reviews** (99.6% on them against 87.0% on new ones), a typical sign of overfitting with 37,000 features and only 4,000 reviews. More training reviews or stronger regularisation would likely help; the regularisation strength was set by hand and not tuned.
+- **Sarcasm and negation are its weak spot.** It reads words, not meaning: in the notebook, "It is not bad at all, quite good actually." is called **negative** (probability of positive 0.19), because *not* and *bad* both push toward negative.
+- **Only a sample:** 5,000 of 400,000 available reviews, from the dataset's test file (the files for training are larger and were not downloaded).
+
+---
+
 ## Design notes
 
 - **Simple code.** Short functions, plain loops and comments that explain *why*, so a beginner can read every file top to bottom.
@@ -617,6 +647,7 @@ For reference, the Day 6 CNN trained on all 60,000 pictures (6,000 shirts) reach
 - [x] **Day 9** — LSTM demand forecast (next day) on made-up Rossmann-style sales; over 5 random starts it roughly ties the best simple baseline
 - [x] **Day 10** — Seq2Seq + attention 4-week forecast. Over 5 random starts attention was more stable and better on average, but neither version reliably beat a "same weekday 2 weeks ago" baseline; the demand module now emits multi-week forecasts
 - [x] **Day 11** — VAE pictures for a thin category (Shirt): they lifted Shirt recall from 0.08 to 0.19, but repeating the 100 real pictures did better (0.27)
+- [x] **Day 12** — Classical review-sentiment baseline (TF-IDF + logistic regression): 0.870 test accuracy on 1,000 Amazon reviews
 - [ ] Later — class-imbalance handling, API layer, monitoring, deployment
 
 ---
