@@ -76,10 +76,7 @@ retailmind-ai/
 │   ├── demand_data.py   # Days 9-10: daily store sales (real Rossmann file or made-up) cut into windows
 │   ├── train_day9.py    # Day 9: LSTM that forecasts tomorrow's sales, vs simple baselines
 │   ├── check_day9_seeds.py    # Day 9: repeat the training from 5 random starts to see how much scores swing
-│   ├── train_day10.py   # Day 10: Seq2Seq + attention that forecasts the next 4 weeks
-│   ├── check_day10_seeds.py   # Day 10: repeat the training from 5 random starts to see how much scores swing
-│   ├── train_day11.py   # Day 11: a VAE draws extra pictures of a thin category; does the CNN improve?
-│   ├── demand_service.py   # the demand module: forecast_next_day() (Day 9), forecast_weeks() (Day 10)
+│   ├── demand_service.py   # the demand module: forecast_next_day() (Day 9)
 │   └── service.py       # predict() helper + command line
 ├── docs/
 │   └── LEARNING_GUIDE.md   # Days 1-11 explained in plain English
