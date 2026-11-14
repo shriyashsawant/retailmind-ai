@@ -11,6 +11,7 @@ __pycache__/
 
 # Big model files that can be regenerated (the ResNet50 model is about 100 MB)
 models/catalog_resnet50.keras
+models/sentiment_distilbert_finetuned/
 *.pt
 
 # OS / editor noise

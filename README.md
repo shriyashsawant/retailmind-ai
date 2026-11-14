@@ -76,10 +76,18 @@ retailmind-ai/
 │   ├── demand_data.py   # Days 9-10: daily store sales (real Rossmann file or made-up) cut into windows
 │   ├── train_day9.py    # Day 9: LSTM that forecasts tomorrow's sales, vs simple baselines
 │   ├── check_day9_seeds.py    # Day 9: repeat the training from 5 random starts to see how much scores swing
+│   ├── train_day10.py   # Day 10: Seq2Seq + attention that forecasts the next 4 weeks
+│   ├── check_day10_seeds.py   # Day 10: repeat the training from 5 random starts to see how much scores swing
+│   ├── train_day11.py   # Day 11: a VAE draws extra pictures of a thin category; does the CNN improve?
+│   ├── review_data.py   # Days 12-13: load and clean Amazon reviews; relabel some as support tickets
+│   ├── train_day12.py   # Day 12: classical sentiment baseline (TF-IDF + logistic regression)
+│   ├── train_day13.py   # Day 13: DistilBERT (frozen and fine-tuned) vs TF-IDF for sentiment, plus ticket routing
+│   ├── sentiment_service.py   # the text module: predict_sentiment() and route_ticket()
+│   ├── demand_service.py   # the demand module: forecast_next_day() (Day 9), forecast_weeks() (Day 10)
 │   ├── demand_service.py   # the demand module: forecast_next_day() (Day 9)
 │   └── service.py       # predict() helper + command line
 ├── docs/
-│   └── LEARNING_GUIDE.md   # Days 1-11 explained in plain English
+│   └── LEARNING_GUIDE.md   # Days 1-13 explained in plain English
 ├── models/              # persisted pipeline + metrics (generated)
 ├── notebooks/
 │   ├── 01_eda_and_baseline.ipynb
@@ -90,7 +98,8 @@ retailmind-ai/
 │   ├── 06_day9_lstm_demand.ipynb          # Day 9: LSTM demand forecast, results and the demand module
 │   ├── 07_day10_seq2seq_attention.ipynb   # Day 10: 4-week forecast with Seq2Seq + attention
 │   ├── 08_day11_vae_augmentation.ipynb    # Day 11: VAE pictures for a thin category, results and samples
-│   └── 09_day12_tfidf_sentiment.ipynb     # Day 12: classical review-sentiment baseline
+│   ├── 09_day12_tfidf_sentiment.ipynb     # Day 12: classical review-sentiment baseline
+│   └── 10_day13_bert_text.ipynb           # Day 13: BERT vs TF-IDF for sentiment and ticket routing
 ├── reports/             # generated data profile, Day 7 detections, Day 8 and Day 11 pictures, Day 10 attention
 ├── requirements.txt
 └── README.md
@@ -618,6 +627,47 @@ Mistakes: 58 negative reviews called positive and 72 positive reviews called neg
 
 ---
 
+## Day 13 — BERT for review sentiment and ticket routing
+
+```bash
+pip install torch transformers          # large downloads; DistilBERT itself is 270 MB the first time
+python -m src.train_day13               # about 30 minutes on a laptop CPU (QUICK=1 for a 1-minute smoke test)
+python -m src.sentiment_service         # try the three sentiment models and the ticket router
+```
+
+**The task.** Does **BERT**, a large language model that has already read a huge amount of text, read reviews better than the Day 12 baseline? We use **DistilBERT** (a smaller BERT, 66 million weights) in two ways: **frozen** (BERT turns each review into 768 numbers and the same simple logistic regression learns from them) and **fine-tuned** (BERT's own weights change a little while it learns the task, one pass over the 4,000 training reviews). Same 4,000 training and 1,000 test reviews as Day 12.
+
+| Sentiment, 1,000 test reviews | Accuracy | F1 | Against TF-IDF (95% range) |
+| --- | ---: | ---: | --- |
+| TF-IDF + logistic regression (Day 12) | 0.870 | 0.8745 | |
+| DistilBERT frozen + logistic regression | 0.867 | 0.8722 | -0.003 (-0.026 to +0.020) |
+| **DistilBERT fine-tuned** | **0.902** | **0.9063** | **+0.032 (+0.011 to +0.054)** |
+
+The 95% range comes from re-sampling the 1,000 test reviews 2,000 times (a paired bootstrap): if the range includes 0, the difference could be luck.
+
+| Cost | TF-IDF | DistilBERT |
+| --- | ---: | ---: |
+| Reviews scored per second (CPU) | about 34,600 | about 113 |
+| Model size | 1.2 MB | 268 MB |
+
+**Support-ticket routing.** Reviews were relabelled as tickets in 4 categories (shipping, quality, refund, how-to) by trigger words, which were then **removed** from the text so a model must use context. 500 per category (1,600 train, 400 test; random guessing would give 0.25):
+
+| Ticket routing | Accuracy | Shipping | Quality | Refund | How-to |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| TF-IDF + logistic regression | 0.4925 | 0.511 | 0.438 | 0.429 | 0.602 |
+| DistilBERT frozen + logistic regression | 0.455 | 0.413 | 0.384 | 0.439 | 0.592 |
+
+**Honest reading**
+- **Fine-tuning gives a real but modest lift: +3.2 points (0.870 to 0.902)**, and the 95% range (+1.1 to +5.4) stays above zero. **Frozen BERT does not help at all** (0.867 vs 0.870, a tie): BERT's features alone were not better than counting words here.
+- **Does the lift justify the cost?** It depends on the use. Fine-tuned BERT is about 300 times slower and 220 times bigger for 3 more points of accuracy. For a product page that scores a few reviews, probably yes; for scoring millions of reviews on a CPU, not obviously.
+- **One fine-tuning run (seed 42)**, so its variation between runs is not measured; given Day 9 and Day 10, treat +3.2 as likely but not exact. Only 1 pass over 4,000 reviews and no tuning of settings (learning rate 5e-5, batch 16, 128 words).
+- **Ticket routing: no BERT lift** (BERT minus TF-IDF: 95% range -0.09 to +0.02), and both are weak (0.45 to 0.49 on 4 categories). The tickets are reviews with category words removed by my own rules, so the labels are noisy and the task is hard by construction. In `src.sentiment_service`, the router sends "The box never showed up and the tracking is stuck" to *quality*, not shipping. **Do not use it as a real router.** Real support tickets with human-assigned categories were not available.
+- **Negation is still hard for all three** ("It is not bad at all, quite good actually." is called negative by every model; the fine-tuned one is closest, 0.38).
+- **The pipeline module:** `predict_sentiment()` now defaults to the fine-tuned model when its folder exists (it is about 270 MB and is not stored in git; `train_day13` creates it) and falls back to TF-IDF otherwise. The saved frozen-BERT head is available as `backend="bert-frozen"` but is not the default because it is not better than TF-IDF.
+- Data: a sample of Amazon reviews (Hugging Face `fancyzhx/amazon_polarity`, one 117 MB file); the platform's Day 12 lab was not in the course sidebar, so Day 12's baseline follows the Day 11 and Day 13 briefs.
+
+---
+
 ## Design notes
 
 - **Simple code.** Short functions, plain loops and comments that explain *why*, so a beginner can read every file top to bottom.
@@ -643,6 +693,7 @@ Mistakes: 58 negative reviews called positive and 72 positive reviews called neg
 - [x] **Day 10** — Seq2Seq + attention 4-week forecast. Over 5 random starts attention was more stable and better on average, but neither version reliably beat a "same weekday 2 weeks ago" baseline; the demand module now emits multi-week forecasts
 - [x] **Day 11** — VAE pictures for a thin category (Shirt): they lifted Shirt recall from 0.08 to 0.19, but repeating the 100 real pictures did better (0.27)
 - [x] **Day 12** — Classical review-sentiment baseline (TF-IDF + logistic regression): 0.870 test accuracy on 1,000 Amazon reviews
+- [x] **Day 13** — DistilBERT for sentiment and ticket routing: fine-tuned BERT beats TF-IDF by 3.2 points (0.902 vs 0.870), frozen BERT ties it, ticket routing shows no lift
 - [ ] Later — class-imbalance handling, API layer, monitoring, deployment
 
 ---

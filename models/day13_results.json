@@ -1,0 +1,75 @@
+{
+  "quick_smoke_test": false,
+  "model": "distilbert/distilbert-base-uncased",
+  "train_reviews": 4000,
+  "test_reviews": 1000,
+  "sentiment": {
+    "TF-IDF + LR (Day 12)": {
+      "accuracy": 0.87,
+      "f1": 0.8745
+    },
+    "DistilBERT frozen + LR": {
+      "accuracy": 0.867,
+      "f1": 0.8722
+    },
+    "DistilBERT fine-tuned": {
+      "accuracy": 0.902,
+      "f1": 0.9063
+    }
+  },
+  "lift_over_tfidf": {
+    "DistilBERT frozen + LR": {
+      "accuracy_minus_tfidf": -0.003,
+      "range_95": [
+        -0.026,
+        0.02
+      ]
+    },
+    "DistilBERT fine-tuned": {
+      "accuracy_minus_tfidf": 0.032,
+      "range_95": [
+        0.011,
+        0.054
+      ]
+    }
+  },
+  "cost": {
+    "tfidf_reviews_per_second": 34602,
+    "bert_reviews_per_second": 112.9,
+    "tfidf_file_mb": 1.2,
+    "bert_download_mb": 268
+  },
+  "tickets": {
+    "categories": [
+      "how-to",
+      "quality",
+      "refund",
+      "shipping"
+    ],
+    "per_category": 500,
+    "train": 1600,
+    "test": 400,
+    "TF-IDF + LR": {
+      "accuracy": 0.4925,
+      "recall_per_category": {
+        "how-to": 0.602,
+        "quality": 0.438,
+        "refund": 0.429,
+        "shipping": 0.511
+      }
+    },
+    "DistilBERT frozen + LR": {
+      "accuracy": 0.455,
+      "recall_per_category": {
+        "how-to": 0.592,
+        "quality": 0.384,
+        "refund": 0.439,
+        "shipping": 0.413
+      }
+    },
+    "difference_range_95": [
+      -0.0925,
+      0.02
+    ]
+  }
+}
