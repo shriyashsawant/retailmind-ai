@@ -29,6 +29,23 @@ FINE_TUNED_FOLDER = "models/sentiment_distilbert_finetuned"
 _loaded = {}                      # the BERT models are big, so load them once and keep them
 
 
+def _load(path):
+    """joblib.load, plus one fix so a model saved with a NEWER scikit-learn still loads in an OLDER one.
+    (scikit-learn 1.8 removed the attribute LogisticRegression.multi_class; scikit-learn 1.5, as in the course lab, still reads it.)
+    'auto' is what the model used when it was trained, so predictions are unchanged."""
+    obj = joblib.load(path)
+    stack = [obj]
+    while stack:
+        item = stack.pop()
+        if isinstance(item, dict):
+            stack.extend(item.values())
+        elif hasattr(item, "steps"):                                   # a scikit-learn Pipeline
+            stack.extend(step for _, step in item.steps)
+        elif type(item).__name__ == "LogisticRegression" and not hasattr(item, "multi_class"):
+            item.multi_class = "auto"
+    return obj
+
+
 def _need_bert():
     try:
         import torch  # noqa: F401
@@ -70,9 +87,9 @@ def predict_sentiment(reviews, backend="auto"):
     if backend == "auto":
         backend = "bert-finetuned" if os.path.isdir(FINE_TUNED_FOLDER) else "tfidf"
     if backend == "tfidf":
-        probabilities = joblib.load(SENTIMENT_TFIDF_FILE).predict_proba(texts)[:, 1]
+        probabilities = _load(SENTIMENT_TFIDF_FILE).predict_proba(texts)[:, 1]
     elif backend == "bert-frozen":
-        probabilities = joblib.load(SENTIMENT_BERT_FILE).predict_proba(_bert_features(texts))[:, 1]
+        probabilities = _load(SENTIMENT_BERT_FILE).predict_proba(_bert_features(texts))[:, 1]
     elif backend == "bert-finetuned":
         if not os.path.isdir(FINE_TUNED_FOLDER):
             raise FileNotFoundError(f"{FINE_TUNED_FOLDER} not found. Run:  python -m src.train_day13")
@@ -85,7 +102,7 @@ def predict_sentiment(reviews, backend="auto"):
 def route_ticket(tickets):
     """tickets: a list of support-ticket texts. Returns the category each one should go to, and the confidence.
     (Day 13 found this router is weak: about 0.45 accuracy over 4 categories, no better than TF-IDF.)"""
-    saved = joblib.load(TICKET_HEAD_FILE)
+    saved = _load(TICKET_HEAD_FILE)
     probabilities = saved["head"].predict_proba(_bert_features([clean_text(t) for t in tickets]))
     answers = []
     for row in probabilities:
