@@ -378,6 +378,38 @@ For our CNN, Trouser, Bag, Sandal and Ankle boot are almost always right (96% to
 
 ---
 
+## 4j. Day 13: BERT, a language model that has already read a lot
+
+**The new idea.** On Day 12 the model only counted words. **BERT** is a large neural network that was first trained on a huge amount of text just to predict missing words. Along the way it learned a lot about how language works. We can borrow that: this is **transfer learning**, like ResNet50 on Day 7, but for text. We use **DistilBERT**, a smaller BERT (66 million weights, 270 MB).
+
+**Two ways to use it.**
+1. **Frozen (feature extractor).** BERT's weights stay as they are. It reads a review and gives back 768 numbers (the average of its output for every word). We train the same simple logistic regression on those numbers.
+2. **Fine-tuned.** We let all of BERT's weights change a little (a small learning rate, 5e-5) while it learns our sentiment task, for one pass over the 4,000 reviews. This is slower, but BERT adapts to the task.
+
+**A fair comparison.** Same 4,000 training and 1,000 test reviews as Day 12.
+
+| Sentiment, 1,000 test reviews | Accuracy |
+| --- | ---: |
+| TF-IDF + logistic regression (Day 12) | 0.870 |
+| DistilBERT frozen + logistic regression | 0.867 |
+| **DistilBERT fine-tuned** | **0.902** |
+
+**Is a difference real? The bootstrap.** With 1,000 test reviews a gap of a point or two can be luck. We re-sample the test reviews 2,000 times and look at how much the gap changes. For the fine-tuned model the gap was +3.2 points with a 95% range of +1.1 to +5.4: it stays above zero, so the lift is likely real. For frozen BERT the range (-2.6 to +2.0) includes zero: **a tie**.
+
+**What it costs.** TF-IDF scores about 34,600 reviews per second and is 1.2 MB. DistilBERT scores about 113 per second and is 268 MB: roughly 300 times slower and 220 times bigger. So whether +3.2 points is worth it depends on the job.
+
+**Ticket routing.** We made support tickets out of reviews by trigger words (shipping, quality, refund, how-to) and **removed those words** so a model has to use context. Both models got only 0.45 to 0.49 on four categories (guessing gives 0.25), and BERT did not help (range -0.09 to +0.02). The labels are noisy because they come from my own keyword rules, so this says little about real tickets. For example, the router sends "The box never showed up" to *quality*, not shipping. Lesson: BERT cannot fix labels that are poor.
+
+**What to remember**
+- Frozen BERT is not automatically better than a simple word-count model; fine-tuning is what gave the lift.
+- Always ask "is it better than the baseline, by how much, with what range, and at what cost?"
+- One fine-tuning run is not enough to know its exact score (Days 9 and 10 showed how much runs can differ), so treat 0.902 as "about 0.90".
+- Negation ("not bad") is hard for all three models.
+
+**Try it:** `pip install torch transformers`, then `python -m src.train_day13` (about 30 minutes), then `python -m src.sentiment_service`.
+
+---
+
 ## 5. The model zoo: what each model is, in one or two lines
 
 First, two families of problem:
