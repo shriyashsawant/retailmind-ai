@@ -8,6 +8,7 @@
 - `src/assistant/service.py` and `src/assistant/__main__.py`: the first assistant module, exposed as `python -m src.assistant summaries`, `ask` and `chat`, plus the Python API `summarize_reviews()` and `answer()`.
 - Data: `data/raw/amazon_reviews_sample.csv` (30 reviews: 10 per product, 6 positive and 4 negative each, with a locally added `product_id`) and `data/raw/product_catalog.json` (3 products, 4 store policies, brand voice).
 - Tests and output: `tests/test_assistant.py` (19 offline tests using a fake pipeline and recording LLM/SDK objects) and `reports/review_summaries.json` (produced by a real run of the model).
+- Learning material: `notebooks/11_day14_llm_assistant.ipynb` (saved walkthrough of the data, summaries, chunking, prompt and chatbot) and a plain-English Day 14 chapter in `docs/LEARNING_GUIDE.md`.
 
 ## How it connects to earlier days
 - Days 12 and 13 (`src/review_data.py`, `src/sentiment_service.py`) classify **individual** reviews as positive or negative and route support tickets. Day 14 uses the same `amazon_polarity` label convention at a different level: it summarises **many** reviews for one product and then answers questions about that product.

@@ -101,7 +101,7 @@ retailmind-ai/
 │   │   └── __main__.py      # python -m src.assistant
 │   └── service.py       # predict() helper + command line
 ├── docs/
-│   ├── LEARNING_GUIDE.md   # Days 1-13 explained in plain English
+│   ├── LEARNING_GUIDE.md   # Days 1-14 explained in plain English
 │   └── DAY14_INCREMENT.md  # Day 14: what was built and why
 ├── models/              # persisted pipeline + metrics (generated)
 ├── notebooks/
@@ -114,7 +114,8 @@ retailmind-ai/
 │   ├── 07_day10_seq2seq_attention.ipynb   # Day 10: 4-week forecast with Seq2Seq + attention
 │   ├── 08_day11_vae_augmentation.ipynb    # Day 11: VAE pictures for a thin category, results and samples
 │   ├── 09_day12_tfidf_sentiment.ipynb     # Day 12: classical review-sentiment baseline
-│   └── 10_day13_bert_text.ipynb           # Day 13: BERT vs TF-IDF for sentiment and ticket routing
+│   ├── 10_day13_bert_text.ipynb           # Day 13: BERT vs TF-IDF for sentiment and ticket routing
+│   └── 11_day14_llm_assistant.ipynb       # Day 14: saved summaries, prompts and grounded chatbot
 ├── tests/
 │   └── test_assistant.py # Day 14: offline tests with fake pipeline/LLM
 ├── reports/             # data profile, detections, pictures, attention + Day 14 review summaries
@@ -697,7 +698,7 @@ The 95% range comes from re-sampling the 1,000 test reviews 2,000 times (a paire
 
 ## Day 14 — LLM assistant: summaries & support chat
 
-The full increment note is in [`docs/DAY14_INCREMENT.md`](docs/DAY14_INCREMENT.md).
+The full increment note is in [`docs/DAY14_INCREMENT.md`](docs/DAY14_INCREMENT.md), the plain-English chapter is in [`docs/LEARNING_GUIDE.md`](docs/LEARNING_GUIDE.md#4k-day-14-an-llm-reads-the-reviews-and-answers-questions), and the saved walkthrough is in [`notebooks/11_day14_llm_assistant.ipynb`](notebooks/11_day14_llm_assistant.ipynb).
 
 ### What it does
 

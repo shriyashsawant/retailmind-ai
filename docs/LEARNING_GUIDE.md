@@ -1,4 +1,4 @@
-# RetailMind learning guide: Days 1 to 6, from the beginning
+# RetailMind learning guide: Days 1 to 14, from the beginning
 
 This guide explains what the code does and **why**, in plain English. Read it with the code open next to it. Every "file" name below is in the `src/` folder.
 
@@ -410,6 +410,20 @@ For our CNN, Trouser, Bag, Sandal and Ankle boot are almost always right (96% to
 
 ---
 
+## 4k. Day 14: an LLM reads the reviews and answers questions
+
+**The new problem.** Days 12 and 13 gave one label per review. But someone running the store wants to know *what people keep talking about*, and wants to ask a chatbot "why did this product get returned?" without reading 1,000 reviews. Day 14 uses a **large language model (LLM)** for both jobs.
+
+**Summaries: many reviews, one theme.** A model cannot read 1,000 reviews at once; it has a word limit. So we **chunk** the reviews into groups of at most 180 words, ask the model to shorten each chunk, sort the short versions into two piles by keyword rules ("What customers like" and "Common complaints"), and ask the model to shorten each pile again. Every theme keeps its **review count**, so you can check the story against the evidence. Real output from the 30 bundled reviews: the headphones got six positive comments about sound, battery and pairing, and four complaints about Bluetooth drops, touch controls and peeling ear pads.
+
+**Chatbot: answer only from what we know.** An LLM can write fluent nonsense. In customer support a confident lie is worse than "I don't know". So the system prompt carries the rule *answer only from the approved product and policy information*, and tells the model to hand off to a specialist when the answer is missing. We also pass only the catalog lines that match the product and the words in the question (**retrieval**), plus the last ten turns of the conversation, so the prompt stays small and "and the returns policy?" still makes sense.
+
+**Keys and cost.** The `LLMClient` reads `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` from the environment (copy `.env.example`); no key is written in code or logs. A key is only needed for the live chat. The summaries and the whole 19-test suite run offline with a fake LLM, so you can learn the pattern without spending money.
+
+**Try it:** `python -m src.assistant summaries`, then `python -m src.assistant ask "What do owners complain about?" --product RM-AUDIO-01`. Open `notebooks/11_day14_llm_assistant.ipynb` for the saved outputs. Full write-up: `docs/DAY14_INCREMENT.md`.
+
+---
+
 ## 5. The model zoo: what each model is, in one or two lines
 
 First, two families of problem:
@@ -470,6 +484,10 @@ Notice: the **big** gain came from understanding the problem (use `balanced` so 
 | Overfitting | great on training data, worse on new data |
 | Underfitting | too simple to learn the pattern |
 | PCA | squashing many columns into fewer |
+| Chunking | splitting long text into pieces that fit a model's word limit |
+| Grounding | forcing an LLM to answer only from supplied facts, not from memory |
+| Retrieval | picking the few relevant documents to put in a prompt |
+| Prompt | the instructions and facts sent to an LLM before the user's question |
 | Bagging / boosting | trees that vote together / trees that fix each other's mistakes |
 
 ---
@@ -481,3 +499,5 @@ Notice: the **big** gain came from understanding the problem (use `balanced` so 
 3. In `train_day3.py` add `20` to the `n_estimators` list and rerun. Did the best settings change?
 4. In `features.py` add a new column of your own idea and look at `train_day4.py` Step 1 to see if it helps.
 5. Change `THRESHOLD` in `config.py` from 0.5 to 0.4 and rerun `python -m src.train`. Recall goes up, precision goes down. Why? (Hint: a lower cut-off flags more customers as "will leave".)
+6. Open `notebooks/11_day14_llm_assistant.ipynb` and change the fake LLM reply. Does the prompt still contain the product facts? Why does that matter?
+7. Run `python -m src.assistant ask "Does it come in blue?" --product RM-AUDIO-01`. The catalog does not say, so the chatbot should hand off instead of guessing.
