@@ -1,0 +1,66 @@
+{
+  "generated_at": "2026-11-24T18:32:47+00:00",
+  "source": "amazon_polarity-style review sample",
+  "summaries": [
+    {
+      "product_id": "RM-AUDIO-01",
+      "product_name": "RetailMind Studio Wireless Headphones",
+      "review_count": 10,
+      "themes": [
+        {
+          "sentiment": "positive",
+          "theme": "What customers like",
+          "review_count": 6,
+          "summary": "Sound is crisp and the bass is rich without muddying vocals . Battery lasts all week on a single charge, even with daily calls . Paired with laptop in seconds and switches between devices easily ."
+        },
+        {
+          "sentiment": "negative",
+          "theme": "Common complaints",
+          "review_count": 4,
+          "summary": "Bluetooth connection drops intermittently when I walk away from my phone . Touch controls are too sensitive and pause the music by accident . The ear pads started peeling after a few months of daily use ."
+        }
+      ],
+      "summary": "What customers like: Sound is crisp and the bass is rich without muddying vocals . Battery lasts all week on a single charge, even with daily calls . Paired with laptop in seconds and switches between devices easily . Common complaints: Bluetooth connection drops intermittently when I walk away from my phone . Touch controls are too sensitive and pause the music by accident . The ear pads started peeling after a few months of daily use ."
+    },
+    {
+      "product_id": "RM-FIT-03",
+      "product_name": "RetailMind Balance Yoga Mat",
+      "review_count": 10,
+      "themes": [
+        {
+          "sentiment": "positive",
+          "theme": "What customers like",
+          "review_count": 6,
+          "summary": "The length is perfect for taller people and it rolls up neatly . Excellent grip even during hot yoga . Cushioning is firm enough for balance poses but still comfortable ."
+        },
+        {
+          "sentiment": "negative",
+          "theme": "Common complaints",
+          "review_count": 4,
+          "summary": "The mat is thinner than expected and my knees feel the floor . Strong rubber smell for the first couple of weeks . The strap is flimsy and stretches after a few uses . It slides on"
+        }
+      ],
+      "summary": "What customers like: The length is perfect for taller people and it rolls up neatly . Excellent grip even during hot yoga . Cushioning is firm enough for balance poses but still comfortable . Common complaints: The mat is thinner than expected and my knees feel the floor . Strong rubber smell for the first couple of weeks . The strap is flimsy and stretches after a few uses . It slides on"
+    },
+    {
+      "product_id": "RM-HOME-02",
+      "product_name": "RetailMind Brew Daily Coffee Maker",
+      "review_count": 10,
+      "themes": [
+        {
+          "sentiment": "positive",
+          "theme": "What customers like",
+          "review_count": 6,
+          "summary": "Compact footprint fits perfectly on small kitchen counter . Removable filter basket makes cleanup very simple . Reusable filter is easy to rinse and saves money on paper filters ."
+        },
+        {
+          "sentiment": "negative",
+          "theme": "Common complaints",
+          "review_count": 4,
+          "summary": "The carafe leaks a few drops onto the counter every morning . Water tank is small, so I have to refill it for a full pot . Brewing cycle is quite loud early in the morning ."
+        }
+      ],
+      "summary": "What customers like: Compact footprint fits perfectly on small kitchen counter . Removable filter basket makes cleanup very simple . Reusable filter is easy to rinse and saves money on paper filters . Common complaints: The carafe leaks a few drops onto the counter every morning . Water tank is small, so I have to refill it for a full pot . Brewing cycle is quite loud early in the morning ."
+    }
+  ]
+}

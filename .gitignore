@@ -18,3 +18,8 @@ models/sentiment_distilbert_finetuned/
 .DS_Store
 .vscode/
 .idea/
+
+# Secrets (Day 14 LLM API keys)
+.env
+.env.*
+!.env.example

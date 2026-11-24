@@ -51,3 +51,16 @@ NUMBER_COLUMNS = ["SeniorCitizen", "tenure", "MonthlyCharges", "TotalCharges"]
 TEST_SIZE = 0.2          # 20% of customers are kept aside to test the model
 RANDOM_STATE = 42        # a fixed number so every run gives the same answer
 THRESHOLD = 0.5          # churn probability at or above this means "will churn"
+
+# --- Day 14: LLM assistant (summaries + support chatbot) ---
+REVIEW_DATA_PATH = "data/raw/amazon_reviews_sample.csv"       # amazon_polarity schema + product_id
+CATALOG_PATH = "data/raw/product_catalog.json"                # products, policies and brand voice
+SUMMARIES_PATH = "reports/review_summaries.json"
+SUMMARY_MODEL = "sshleifer/distilbart-cnn-12-6"
+SUMMARY_MAX_WORDS = 180
+SUMMARY_MAX_LENGTH = 64
+SUMMARY_MIN_LENGTH = 12
+LLM_PROVIDER_ENV = "RETAILMIND_LLM_PROVIDER"
+LLM_MODEL_ENV = "RETAILMIND_LLM_MODEL"
+LLM_API_KEY_ENV = {"openai": "OPENAI_API_KEY", "anthropic": "ANTHROPIC_API_KEY"}
+DEFAULT_LLM_MODELS = {"openai": "gpt-4o-mini", "anthropic": "claude-3-5-haiku-20241022"}

@@ -1,1 +1,1 @@
-"""RetailMind AI — Day 1 churn prediction service."""
+"""RetailMind AI — churn prediction service and Day 14 LLM assistant."""

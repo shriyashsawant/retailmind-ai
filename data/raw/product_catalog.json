@@ -1,0 +1,66 @@
+{
+  "brand_voice": "Warm, concise and practical. Speak as a helpful RetailMind product specialist, never as a robot. Use short sentences and plain language.",
+  "store_policies": [
+    {
+      "id": "returns",
+      "title": "Returns and refunds",
+      "text": "Unused items can be returned within 30 days of delivery for a full refund. Opened products are eligible for return within 14 days if they are in original condition with all accessories. Refunds are issued to the original payment method within 5 business days of inspection."
+    },
+    {
+      "id": "shipping",
+      "title": "Shipping",
+      "text": "Standard shipping is free on orders over $50 and normally arrives in 3 to 5 business days. Express shipping arrives in 1 to 2 business days for a flat fee of $12. Orders placed before 2 PM on a business day ship the same day."
+    },
+    {
+      "id": "warranty",
+      "title": "Warranty",
+      "text": "All electronics include a 2-year limited warranty covering manufacturing defects. The warranty does not cover accidental damage, cosmetic wear or normal battery degradation. Claims are handled by the support team with proof of purchase."
+    },
+    {
+      "id": "support",
+      "title": "Support hours and escalation",
+      "text": "Support is available every day from 8 AM to 8 PM local time. For account-specific issues, damaged items or warranty claims, offer to connect the customer with a human specialist."
+    }
+  ],
+  "products": [
+    {
+      "product_id": "RM-AUDIO-01",
+      "name": "RetailMind Studio Wireless Headphones",
+      "category": "Audio",
+      "price": "$89.00",
+      "features": [
+        "40-hour battery life with quick charge",
+        "Active noise cancellation",
+        "Bluetooth 5.3 multipoint pairing",
+        "Replaceable ear cushions and folding case"
+      ],
+      "details": "Over-ear headphones tuned for balanced sound with soft memory-foam ear cushions. They weigh 250 g, fold flat for travel and include a USB-C charging cable."
+    },
+    {
+      "product_id": "RM-HOME-02",
+      "name": "RetailMind Brew Daily Coffee Maker",
+      "category": "Kitchen",
+      "price": "$64.00",
+      "features": [
+        "12-cup glass carafe with keep-warm plate",
+        "24-hour programmable timer",
+        "Removable washable filter basket",
+        "Compact 9-inch footprint"
+      ],
+      "details": "A compact drip coffee maker that brews a full pot in about 8 minutes. It includes a reusable mesh filter, a measuring scoop and a two-year limited warranty."
+    },
+    {
+      "product_id": "RM-FIT-03",
+      "name": "RetailMind Balance Yoga Mat",
+      "category": "Fitness",
+      "price": "$38.00",
+      "features": [
+        "6 mm cushioning with non-slip texture",
+        "72 x 24 inch size",
+        "Eco-friendly TPE material",
+        "Carrying strap included"
+      ],
+      "details": "A durable TPE mat with a grippy surface on both sides. It wipes clean with a damp cloth, rolls up compactly and is suitable for yoga, pilates and home workouts."
+    }
+  ]
+}

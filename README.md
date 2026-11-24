@@ -11,15 +11,19 @@ RetailMind AI is an incremental, end-to-end retail intelligence platform. Each d
 
 **Day 1 goal:** give the business an immediate, trustworthy churn baseline — flag customers likely to leave, with a model that can be called as a service.
 
+**Day 14 goal:** summarise review themes and answer customers with an LLM assistant — instant summaries and 24/7 conversational support cut response time and workload.
+
 ---
 
-## What ships in this increment
+## What shipped in Day 1
 
 - A clean, persistent repo structure (`data/`, `src/`, `models/`, `notebooks/`, `reports/`)
 - A reproducible **ingest → clean → split → preprocess → train → evaluate → persist** pipeline
 - A fitted **scikit-learn Pipeline** persisted with `joblib`
 - A thin **ML service** (`predict()`) plus a CLI for scoring one or many customers
 - A recorded baseline that every future increment must beat
+
+**Day 14 adds:** review theme summaries from a Hugging Face Transformers pipeline, a grounded support chatbot behind a thin LLM API client, and the first assistant CLI. The Day 1 churn pipeline and service are unchanged.
 
 ---
 
@@ -42,15 +46,18 @@ Key data facts:
 
 `TotalCharges` arrives as text with 11 blank values — all new customers with `tenure = 0`. They are coerced to numeric and filled with `0.0`, which is the correct business value for a customer who has not been billed yet.
 
+**Day 14 data:** `data/raw/amazon_reviews_sample.csv` uses the Hugging Face `amazon_polarity` schema (`text` plus binary `label`, where 1 = positive and 0 = negative) with a locally added `product_id` column so reviews can be grouped per product. `data/raw/product_catalog.json` holds product metadata, store policies and the brand voice for the chatbot. Swap in a larger `amazon_polarity` export by keeping those three columns and adding `product_id`.
+
 ---
 
 ## Repository structure
 
 ```text
 retailmind-ai/
-├── data/
-│   └── raw/
-│       └── Telco-Customer-Churn.csv
+├── data/raw/
+│   ├── Telco-Customer-Churn.csv
+│   ├── amazon_reviews_sample.csv   # Day 14: text, label, product_id
+│   └── product_catalog.json        # Day 14: products, policies, brand voice
 ├── src/
 │   ├── config.py        # file names, column names, settings
 │   ├── data.py          # load, clean, split the data
@@ -84,10 +91,18 @@ retailmind-ai/
 │   ├── train_day13.py   # Day 13: DistilBERT (frozen and fine-tuned) vs TF-IDF for sentiment, plus ticket routing
 │   ├── sentiment_service.py   # the text module: predict_sentiment() and route_ticket()
 │   ├── demand_service.py   # the demand module: forecast_next_day() (Day 9), forecast_weeks() (Day 10)
-│   ├── demand_service.py   # the demand module: forecast_next_day() (Day 9)
+│   ├── assistant/       # Day 14: first assistant module
+│   │   ├── data.py          # review and catalog loaders
+│   │   ├── prompts.py       # on-brand, grounded prompt templates
+│   │   ├── client.py        # thin OpenAI/Anthropic client (env-only key)
+│   │   ├── summarizer.py    # HF summarization pipeline → theme summaries
+│   │   ├── chatbot.py       # history + grounded retrieval + answers
+│   │   ├── service.py       # public facade + summaries/ask/chat CLI
+│   │   └── __main__.py      # python -m src.assistant
 │   └── service.py       # predict() helper + command line
 ├── docs/
-│   └── LEARNING_GUIDE.md   # Days 1-13 explained in plain English
+│   ├── LEARNING_GUIDE.md   # Days 1-13 explained in plain English
+│   └── DAY14_INCREMENT.md  # Day 14: what was built and why
 ├── models/              # persisted pipeline + metrics (generated)
 ├── notebooks/
 │   ├── 01_eda_and_baseline.ipynb
@@ -100,7 +115,10 @@ retailmind-ai/
 │   ├── 08_day11_vae_augmentation.ipynb    # Day 11: VAE pictures for a thin category, results and samples
 │   ├── 09_day12_tfidf_sentiment.ipynb     # Day 12: classical review-sentiment baseline
 │   └── 10_day13_bert_text.ipynb           # Day 13: BERT vs TF-IDF for sentiment and ticket routing
-├── reports/             # generated data profile, Day 7 detections, Day 8 and Day 11 pictures, Day 10 attention
+├── tests/
+│   └── test_assistant.py # Day 14: offline tests with fake pipeline/LLM
+├── reports/             # data profile, detections, pictures, attention + Day 14 review summaries
+├── .env.example         # Day 14: API key variable names (no secrets)
 ├── requirements.txt
 └── README.md
 ```
@@ -145,6 +163,14 @@ python -m src.service
 
 # Or score a CSV of customers
 python -m src.service path/to/customers.csv
+
+# Day 14: summarize reviews (downloads the HF model on first run)
+python -m src.assistant summaries
+
+# Day 14: ask the support bot (needs an API key in the environment)
+export OPENAI_API_KEY="..."          # or ANTHROPIC_API_KEY="..."
+python -m src.assistant ask "How long does the battery last?" --product RM-AUDIO-01
+python -m src.assistant chat
 ```
 
 Run every command from the main project folder (the one that contains `src`).
@@ -161,6 +187,7 @@ Outputs:
 - `models/churn_ann.keras` + `models/churn_ann_prepare.joblib` + `models/day5_results.json` — the Day 5 neural network, its data-preparation step and its results
 - `models/catalog_cnn.keras` + `models/day6_results.json` — the Day 6 image classifier and its results
 - `reports/data_profile.json` — a few simple facts about the raw data
+- `reports/review_summaries.json` — Day 14 theme summaries per product
 
 ---
 
@@ -668,6 +695,90 @@ The 95% range comes from re-sampling the 1,000 test reviews 2,000 times (a paire
 
 ---
 
+## Day 14 — LLM assistant: summaries & support chat
+
+The full increment note is in [`docs/DAY14_INCREMENT.md`](docs/DAY14_INCREMENT.md).
+
+### What it does
+
+- **Review themes:** reviews are grouped by product and sentiment (`label` 1 = praise, 0 = complaints). Each group is packed into ≤180-word chunks and condensed by the Hugging Face `pipeline("summarization", model="sshleifer/distilbart-cnn-12-6")` with `max_length=64`, `min_length=12`, `do_sample=False`. Chunk summaries are joined into a product-level summary with review counts.
+- **Support chatbot:** up to three catalog snippets (product metadata plus store policies) are selected by token overlap with the question. The bot wraps them in an on-brand system prompt, appends the last 10 conversation turns, calls the LLM API, and remembers both turns of the exchange.
+- **Grounding:** the system prompt forbids invented prices, features or policies. If the context has no answer, the bot gives the configured fallback line and offers a human specialist; account, damage and warranty queries are escalated the same way.
+
+### What happened in Day 14
+
+1. **Reviews came in:** 30 `amazon_polarity`-style reviews (10 per product, 6 positive and 4 negative each) were loaded alongside metadata for 3 products and 4 store policies.
+2. **Summaries were built:** each product's positive and negative reviews were chunked and condensed by the HF pipeline into two themes with review counts, then saved to `reports/review_summaries.json`.
+3. **The LLM API was wired in:** a thin client resolves the provider and key from environment variables, so no secret lives in the repo, and both OpenAI and Anthropic calls go through the same `chat()` method.
+4. **The chatbot was grounded:** on-brand prompt templates wrap the selected product/policy snippets, the last 10 turns provide continuity, and unknown information triggers the fallback answer instead of a guess.
+5. **The first assistant module was exposed:** `src.assistant` plus a CLI for `summaries`, `ask` and `chat`, backed by offline tests. The Day 1–13 churn, CV and text modules were left untouched.
+
+This complements Days 12 and 13: those days classify a single review or ticket; Day 14 summarises many reviews per product and uses the product/policy text to answer customers.
+
+Example output produced by the real pipeline for the headphones:
+
+```text
+RetailMind Studio Wireless Headphones (RM-AUDIO-01)
+  What customers like (6 reviews)
+    Sound is crisp and the bass is rich without muddying vocals. Battery lasts
+    all week on a single charge. Paired with laptop in seconds.
+  Common complaints (4 reviews)
+    Bluetooth connection drops intermittently. Touch controls are too
+    sensitive. The ear pads started peeling after a few months.
+```
+
+### Module map
+
+| Module | Responsibility |
+| --- | --- |
+| `src/assistant/data.py` | Load reviews/catalog; flatten catalog into searchable snippets |
+| `src/assistant/prompts.py` | System template, fallback line, history-aware message builder |
+| `src/assistant/client.py` | Thin OpenAI/Anthropic client; env-only key; injectable transport |
+| `src/assistant/summarizer.py` | Chunking + HF summarization pipeline + product theme summaries |
+| `src/assistant/chatbot.py` | Context retrieval, conversation history, grounded answers |
+| `src/assistant/service.py` | `build_summaries()` / `answer()` facade and CLI |
+
+### LLM API setup
+
+The key is **never hard-coded**. The client reads `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` from the environment; `RETAILMIND_LLM_PROVIDER` forces one (`openai` or `anthropic`) and `RETAILMIND_LLM_MODEL` overrides the default model (`gpt-4o-mini` / `claude-3-5-haiku-20241022`). Copy `.env.example` to `.env` for reference and export the variables in your shell — `.env` is gitignored. `repr(client)` masks the key.
+
+```python
+from src.assistant import ReviewSummarizer, SupportChatbot, summarize_reviews
+
+# Summaries (downloads the model on first use)
+summaries = summarize_reviews(product_id="RM-AUDIO-01")
+print(summaries[0]["summary"])
+
+# Chatbot (requires an API key in the environment)
+bot = SupportChatbot()
+print(bot.ask("How long does the battery last?", product_id="RM-AUDIO-01"))
+print(bot.ask("What is the return window?"))  # history is kept
+bot.reset()
+```
+
+`python -m src.assistant summaries [--product ID] [--output path]`, `ask "question" [--product ID]` and `chat [--product ID]` expose the same features from the command line.
+
+### Try it out
+
+1. `python -m src.assistant summaries` — no API key needed; the first run downloads the model, and the JSON lands in `reports/`.
+2. `export OPENAI_API_KEY="..."` (or `ANTHROPIC_API_KEY`) then `python -m src.assistant ask "How long does the battery last?" --product RM-AUDIO-01` — the answer should cite the 40-hour battery from the catalog.
+3. `python -m src.assistant chat` — ask a follow-up such as "And what is the return window?" to see the bot use earlier turns; type `quit` to leave.
+4. Ask something outside the catalog, for example "Do you sell drones?" — the bot should use the fallback line instead of inventing an answer.
+
+### Verification
+
+```bash
+python -m unittest discover -s tests
+```
+
+The 19 tests use a fake summarization pipeline and recording LLM/SDK objects, so they need no API key or network and cover chunking, theme grouping, prompt grounding, env-only keys, both provider call paths, history trimming, JSON persistence and the CLI. The real pipeline was also run over the bundled 30 reviews; its output is saved in `reports/review_summaries.json`. Transformers is pinned to `<5` because v5 removed the `summarization` pipeline, and Anthropic to `<1` because v2 dropped the `temperature` argument.
+
+### Next iteration
+
+Day 15 will generate on-brand marketing imagery with Stable Diffusion, reusing this catalog's product descriptions and brand voice.
+
+---
+
 ## Design notes
 
 - **Simple code.** Short functions, plain loops and comments that explain *why*, so a beginner can read every file top to bottom.
@@ -694,12 +805,14 @@ The 95% range comes from re-sampling the 1,000 test reviews 2,000 times (a paire
 - [x] **Day 11** — VAE pictures for a thin category (Shirt): they lifted Shirt recall from 0.08 to 0.19, but repeating the 100 real pictures did better (0.27)
 - [x] **Day 12** — Classical review-sentiment baseline (TF-IDF + logistic regression): 0.870 test accuracy on 1,000 Amazon reviews
 - [x] **Day 13** — DistilBERT for sentiment and ticket routing: fine-tuned BERT beats TF-IDF by 3.2 points (0.902 vs 0.870), frozen BERT ties it, ticket routing shows no lift
+- [x] **Day 14** — LLM review summaries + grounded support chatbot (first assistant module); 19 offline tests and a real HF pipeline run
+- [ ] **Day 15** — On-brand marketing imagery with Stable Diffusion
 - [ ] Later — class-imbalance handling, API layer, monitoring, deployment
 
 ---
 
 ## Tech stack
 
-`pandas` · `scikit-learn` · `joblib` · `xgboost` · `tensorflow` / `keras` (Day 5) — Python 3.11 or 3.12
+`pandas` · `scikit-learn` · `joblib` · `xgboost` · `tensorflow` / `keras` (Day 5) · `transformers` · `torch` · `openai` / `anthropic` (Day 14) — Python 3.11 or 3.12
 
 Built as part of the **RetailMind AI** 35-day incremental project.
