@@ -64,3 +64,13 @@ LLM_PROVIDER_ENV = "RETAILMIND_LLM_PROVIDER"
 LLM_MODEL_ENV = "RETAILMIND_LLM_MODEL"
 LLM_API_KEY_ENV = {"openai": "OPENAI_API_KEY", "anthropic": "ANTHROPIC_API_KEY"}
 DEFAULT_LLM_MODELS = {"openai": "gpt-4o-mini", "anthropic": "claude-3-5-haiku-20241022"}
+
+# --- Day 15: diffusion marketing imagery ---
+MARKETING_MODEL = "runwayml/stable-diffusion-v1-5"
+PROMPT_LIBRARY_PATH = "data/prompt_library.json"
+MARKETING_OUTPUT_FOLDER = "reports/marketing"
+MARKETING_MANIFEST_PATH = "reports/marketing_assets.json"
+MARKETING_STYLES = ("catalog", "lifestyle", "social")
+MARKETING_GUIDANCE_SCALE = 7.5
+MARKETING_INFERENCE_STEPS = 30
+MARKETING_IMAGE_SIZE = 512

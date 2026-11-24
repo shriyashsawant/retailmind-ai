@@ -1,4 +1,4 @@
-# RetailMind learning guide: Days 1 to 14, from the beginning
+# RetailMind learning guide: Days 1 to 15, from the beginning
 
 This guide explains what the code does and **why**, in plain English. Read it with the code open next to it. Every "file" name below is in the `src/` folder.
 
@@ -424,6 +424,20 @@ For our CNN, Trouser, Bag, Sandal and Ankle boot are almost always right (96% to
 
 ---
 
+## 4l. Day 15: diffusion draws the marketing pictures
+
+**The new problem.** The catalog already describes every product, but a campaign needs pictures. Booking a photographer for each product and each channel is slow and expensive. Day 15 turns those descriptions into **on-brand images** with Stable Diffusion.
+
+**Session 1 — what diffusion actually does.** Imagine a picture made entirely of TV static. The model was trained to take slightly noisy pictures and make them a little less noisy, over and over, until a clear image appears. We give it text instead of a starting picture, and it uses that text as the target while it denoises. `num_inference_steps=30` means thirty small clean-up passes. More steps can look better but cost more time.
+
+**Session 2 — how we control it.** The **positive prompt** says what we want: the product name, its features, a category setting (a desk for headphones, a kitchen counter for the coffee maker) and the RetailMind brand voice. The **negative prompt** says what we do not want: blur, text, logos, distorted details, clutter. **Guidance scale 7.5** tells the model how tightly to follow the prompt; too low and it ignores the brief, too high and the image looks forced.
+
+**Session 3 — why seeds matter.** The model's first noise pattern comes from a random **seed**. Same prompt plus same seed gives the same image, so an approved look can be reproduced next month. We saved nine briefs — three products times three styles (`catalog`, `lifestyle`, `social`) — in `data/prompt_library.json`, with fixed seeds like 101 and 202. Change the seed only when you deliberately want a new variation.
+
+**Try it:** `python -m src.creative prompts` prints the library without downloading anything. On a GPU machine, `python -m src.creative generate --product RM-AUDIO-01 --style catalog` writes a PNG to `reports/marketing/` and a traceable manifest to `reports/marketing_assets.json`. The 28 offline tests use a fake pipeline, so they work on any laptop. Full write-up: `docs/DAY15_INCREMENT.md`; saved walkthrough: `notebooks/12_day15_diffusion_marketing.ipynb`.
+
+---
+
 ## 5. The model zoo: what each model is, in one or two lines
 
 First, two families of problem:
@@ -488,6 +502,10 @@ Notice: the **big** gain came from understanding the problem (use `balanced` so 
 | Grounding | forcing an LLM to answer only from supplied facts, not from memory |
 | Retrieval | picking the few relevant documents to put in a prompt |
 | Prompt | the instructions and facts sent to an LLM before the user's question |
+| Diffusion | making an image by repeatedly removing noise from random static |
+| Negative prompt | a list of unwanted features that steers generation away from mistakes |
+| Guidance scale | how strongly the model follows the prompt |
+| Seed | the number that fixes the starting noise, making an image reproducible |
 | Bagging / boosting | trees that vote together / trees that fix each other's mistakes |
 
 ---
@@ -501,3 +519,5 @@ Notice: the **big** gain came from understanding the problem (use `balanced` so 
 5. Change `THRESHOLD` in `config.py` from 0.5 to 0.4 and rerun `python -m src.train`. Recall goes up, precision goes down. Why? (Hint: a lower cut-off flags more customers as "will leave".)
 6. Open `notebooks/11_day14_llm_assistant.ipynb` and change the fake LLM reply. Does the prompt still contain the product facts? Why does that matter?
 7. Run `python -m src.assistant ask "Does it come in blue?" --product RM-AUDIO-01`. The catalog does not say, so the chatbot should hand off instead of guessing.
+8. Run `python -m src.creative prompts --style social` and compare the three prompts. What changed, and what stayed on brand?
+9. On a GPU machine, generate the same brief twice and then once with `--seed 999`. Which two images match, and why?

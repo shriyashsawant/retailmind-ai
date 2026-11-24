@@ -23,3 +23,7 @@ models/sentiment_distilbert_finetuned/
 .env
 .env.*
 !.env.example
+
+# Day 15 generated marketing images and manifest (prompt library is committed)
+reports/marketing/
+reports/marketing_assets.json

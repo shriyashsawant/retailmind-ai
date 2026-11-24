@@ -13,6 +13,8 @@ RetailMind AI is an incremental, end-to-end retail intelligence platform. Each d
 
 **Day 14 goal:** summarise review themes and answer customers with an LLM assistant — instant summaries and 24/7 conversational support cut response time and workload.
 
+**Day 15 goal:** generate on-brand marketing visuals on demand with diffusion — instant creative assets reduce design cost and speed up campaigns.
+
 ---
 
 ## What shipped in Day 1
@@ -24,6 +26,8 @@ RetailMind AI is an incremental, end-to-end retail intelligence platform. Each d
 - A recorded baseline that every future increment must beat
 
 **Day 14 adds:** review theme summaries from a Hugging Face Transformers pipeline, a grounded support chatbot behind a thin LLM API client, and the first assistant CLI. The Day 1 churn pipeline and service are unchanged.
+
+**Day 15 adds:** a diffusion creative module that turns the same catalog into studio, lifestyle and social image prompts, with negative prompts, guidance scale, fixed seeds and a checked-in prompt library. It reuses Day 14's product metadata and brand voice; earlier modules are unchanged.
 
 ---
 
@@ -48,16 +52,20 @@ Key data facts:
 
 **Day 14 data:** `data/raw/amazon_reviews_sample.csv` uses the Hugging Face `amazon_polarity` schema (`text` plus binary `label`, where 1 = positive and 0 = negative) with a locally added `product_id` column so reviews can be grouped per product. `data/raw/product_catalog.json` holds product metadata, store policies and the brand voice for the chatbot. Swap in a larger `amazon_polarity` export by keeping those three columns and adding `product_id`.
 
+**Day 15 data:** no new dataset. Prompts are templated from the same `data/raw/product_catalog.json`, and the nine approved briefs are saved in `data/prompt_library.json`. The pretrained model is `runwayml/stable-diffusion-v1-5` from the Hugging Face Hub; it is downloaded only on the first real `generate` call.
+
 ---
 
 ## Repository structure
 
 ```text
 retailmind-ai/
-├── data/raw/
-│   ├── Telco-Customer-Churn.csv
-│   ├── amazon_reviews_sample.csv   # Day 14: text, label, product_id
-│   └── product_catalog.json        # Day 14: products, policies, brand voice
+├── data/
+│   ├── prompt_library.json         # Day 15: nine approved image briefs
+│   └── raw/
+│       ├── Telco-Customer-Churn.csv
+│       ├── amazon_reviews_sample.csv   # Day 14: text, label, product_id
+│       └── product_catalog.json        # Days 14-15: products, policies, brand voice
 ├── src/
 │   ├── config.py        # file names, column names, settings
 │   ├── data.py          # load, clean, split the data
@@ -99,10 +107,16 @@ retailmind-ai/
 │   │   ├── chatbot.py       # history + grounded retrieval + answers
 │   │   ├── service.py       # public facade + summaries/ask/chat CLI
 │   │   └── __main__.py      # python -m src.assistant
+│   ├── creative/        # Day 15: diffusion marketing imagery
+│   │   ├── prompts.py       # catalog → prompts, styles, negative prompt, seeds
+│   │   ├── generator.py     # lazy StableDiffusionPipeline + seeded generation
+│   │   ├── service.py       # public facade + prompts/generate CLI
+│   │   └── __main__.py      # python -m src.creative
 │   └── service.py       # predict() helper + command line
 ├── docs/
-│   ├── LEARNING_GUIDE.md   # Days 1-14 explained in plain English
-│   └── DAY14_INCREMENT.md  # Day 14: what was built and why
+│   ├── LEARNING_GUIDE.md   # Days 1-15 explained in plain English
+│   ├── DAY14_INCREMENT.md  # Day 14: what was built and why
+│   └── DAY15_INCREMENT.md  # Day 15: what was built and why
 ├── models/              # persisted pipeline + metrics (generated)
 ├── notebooks/
 │   ├── 01_eda_and_baseline.ipynb
@@ -115,10 +129,12 @@ retailmind-ai/
 │   ├── 08_day11_vae_augmentation.ipynb    # Day 11: VAE pictures for a thin category, results and samples
 │   ├── 09_day12_tfidf_sentiment.ipynb     # Day 12: classical review-sentiment baseline
 │   ├── 10_day13_bert_text.ipynb           # Day 13: BERT vs TF-IDF for sentiment and ticket routing
-│   └── 11_day14_llm_assistant.ipynb       # Day 14: saved summaries, prompts and grounded chatbot
+│   ├── 11_day14_llm_assistant.ipynb       # Day 14: saved summaries, prompts and grounded chatbot
+│   └── 12_day15_diffusion_marketing.ipynb # Day 15: prompt library, controls and seeded calls
 ├── tests/
-│   └── test_assistant.py # Day 14: offline tests with fake pipeline/LLM
-├── reports/             # data profile, detections, pictures, attention + Day 14 review summaries
+│   ├── test_assistant.py # Day 14: offline tests with fake pipeline/LLM
+│   └── test_creative.py  # Day 15: offline tests with fake diffusion pipeline/image
+├── reports/             # data profile, detections, pictures, attention, Day 14 summaries, Day 15 assets
 ├── .env.example         # Day 14: API key variable names (no secrets)
 ├── requirements.txt
 └── README.md
@@ -172,6 +188,14 @@ python -m src.assistant summaries
 export OPENAI_API_KEY="..."          # or ANTHROPIC_API_KEY="..."
 python -m src.assistant ask "How long does the battery last?" --product RM-AUDIO-01
 python -m src.assistant chat
+
+# Day 15: print the prompt library (no model download)
+python -m src.creative prompts
+python -m src.creative generate --dry-run --product RM-AUDIO-01 --style catalog
+
+# Day 15: render on a GPU machine (downloads ~4 GB on first run)
+python -m src.creative generate --product RM-AUDIO-01 --style catalog
+python -m src.creative generate --all-styles
 ```
 
 Run every command from the main project folder (the one that contains `src`).
@@ -189,6 +213,8 @@ Outputs:
 - `models/catalog_cnn.keras` + `models/day6_results.json` — the Day 6 image classifier and its results
 - `reports/data_profile.json` — a few simple facts about the raw data
 - `reports/review_summaries.json` — Day 14 theme summaries per product
+- `data/prompt_library.json` — Day 15's nine checked-in, reproducible image briefs
+- `reports/marketing/` and `reports/marketing_assets.json` — Day 15 generated images and their prompt/seed manifest (created on a GPU run, gitignored)
 
 ---
 
@@ -772,11 +798,40 @@ bot.reset()
 python -m unittest discover -s tests
 ```
 
-The 19 tests use a fake summarization pipeline and recording LLM/SDK objects, so they need no API key or network and cover chunking, theme grouping, prompt grounding, env-only keys, both provider call paths, history trimming, JSON persistence and the CLI. The real pipeline was also run over the bundled 30 reviews; its output is saved in `reports/review_summaries.json`. Transformers is pinned to `<5` because v5 removed the `summarization` pipeline, and Anthropic to `<1` because v2 dropped the `temperature` argument.
+The 28 tests use fake summarization, LLM/SDK and diffusion pipeline objects, so they need no API key, GPU or network and cover chunking, theme grouping, prompt grounding, env-only keys, both provider call paths, history trimming, seeded image prompts, negative prompts, image saving, JSON manifests and both CLIs. The real Day 14 pipeline was also run over the bundled 30 reviews; its output is saved in `reports/review_summaries.json`. Transformers is pinned to `<5` because v5 removed the `summarization` pipeline, Anthropic to `<1` because v2 dropped the `temperature` argument, and diffusers to `<0.36` because newer versions require a Hugging Face Hub major version that conflicts with Transformers.
+
+---
+
+## Day 15 — Diffusion: on-brand marketing imagery
+
+The full increment note is in [`docs/DAY15_INCREMENT.md`](docs/DAY15_INCREMENT.md), the plain-English chapter is in [`docs/LEARNING_GUIDE.md`](docs/LEARNING_GUIDE.md#4l-day-15-diffusion-draws-the-marketing-pictures), and the saved walkthrough is in [`notebooks/12_day15_diffusion_marketing.ipynb`](notebooks/12_day15_diffusion_marketing.ipynb).
+
+### What it does
+
+- **Prompt templating:** each product's category, details and features are combined with a setting and one of three styles (`catalog`, `lifestyle`, `social`), plus the catalog's brand voice.
+- **Quality controls:** a negative prompt rejects blur, text, logos and distorted details; guidance scale `7.5` keeps the image close to the brief; 30 inference steps balance quality and speed.
+- **Reproducibility:** fixed seeds (`101/112/124`, `202/213/225`, `303/314/326`) make approved assets regenerable. Nine briefs are saved in `data/prompt_library.json`.
+- **Creative module:** `python -m src.creative prompts` prints or saves the library; `generate` lazily loads `StableDiffusionPipeline` from `runwayml/stable-diffusion-v1-5`, writes PNGs to `reports/marketing/` and a prompt/seed manifest to `reports/marketing_assets.json`.
+
+### The three teaching sessions
+
+1. **Diffusion** starts from random noise and denoises it toward an image that matches the prompt.
+2. **Control** comes from the positive prompt, the negative prompt and the guidance scale.
+3. **Seeds and a prompt library** make an approved look repeatable across campaigns.
+
+### Try it
+
+```bash
+python -m src.creative prompts --style social
+python -m src.creative generate --dry-run --product RM-AUDIO-01 --style catalog
+python -m src.creative generate --product RM-AUDIO-01 --style catalog
+```
+
+The first two commands work on any laptop. The third needs a GPU runtime and downloads about 4 GB on first use. This session had no GPU, so no real PNG was committed; the nine offline tests use a fake pipeline and image.
 
 ### Next iteration
 
-Day 15 will generate on-brand marketing imagery with Stable Diffusion, reusing this catalog's product descriptions and brand voice.
+Create product image variations with **img2img** from an approved shot, then assemble a short promo video clip. Neither is implemented yet.
 
 ---
 
@@ -807,13 +862,14 @@ Day 15 will generate on-brand marketing imagery with Stable Diffusion, reusing t
 - [x] **Day 12** — Classical review-sentiment baseline (TF-IDF + logistic regression): 0.870 test accuracy on 1,000 Amazon reviews
 - [x] **Day 13** — DistilBERT for sentiment and ticket routing: fine-tuned BERT beats TF-IDF by 3.2 points (0.902 vs 0.870), frozen BERT ties it, ticket routing shows no lift
 - [x] **Day 14** — LLM review summaries + grounded support chatbot (first assistant module); 19 offline tests and a real HF pipeline run
-- [ ] **Day 15** — On-brand marketing imagery with Stable Diffusion
+- [x] **Day 15** — On-brand marketing imagery with Stable Diffusion; prompt library, fixed seeds and 9 offline tests
+- [ ] **Day 16** — Try-it challenge: img2img variations and a short promo video clip
 - [ ] Later — class-imbalance handling, API layer, monitoring, deployment
 
 ---
 
 ## Tech stack
 
-`pandas` · `scikit-learn` · `joblib` · `xgboost` · `tensorflow` / `keras` (Day 5) · `transformers` · `torch` · `openai` / `anthropic` (Day 14) — Python 3.11 or 3.12
+`pandas` · `scikit-learn` · `joblib` · `xgboost` · `tensorflow` / `keras` (Day 5) · `transformers` · `torch` · `openai` / `anthropic` (Day 14) · `diffusers` (Day 15) — Python 3.11 or 3.12
 
 Built as part of the **RetailMind AI** 35-day incremental project.
